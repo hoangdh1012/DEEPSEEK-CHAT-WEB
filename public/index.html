@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' 'unsafe-inline' 'unsafe-eval' https://api.deepseek.com https://generativelanguage.googleapis.com; font-src 'self' https://fonts.gstatic.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;">
+  <title>DeepSeek Novel Game - Trò Chơi Tiểu Thuyết AI</title>
+  <link rel="stylesheet" href="styles.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,300;0,400;0,500;0,600;0,700;1,400&display=swap" rel="stylesheet">
+</head>
+<body>
+<div id="app">
+
+  <!-- ================================================================ -->
+  <!-- SCREEN: MAIN MENU                                                 -->
+  <!-- ================================================================ -->
+  <div id="screen-main-menu" class="screen active">
+    <div class="main-menu-container">
+      <div class="main-menu-bg"></div>
+      <div class="main-menu-content">
+        <h1 class="main-title">
+          <span class="title-deepseek">DEEPSEEK</span>
+          <span class="title-novel">NOVEL</span>
+          <span class="title-game">GAME</span>
+        </h1>
+        <p class="subtitle">Tạo thế giới tiểu thuyết của riêng bạn. Nhập vai nhân vật chính. Để AI viết nên cuộc phiêu lưu.</p>
+        <div class="main-menu-buttons">
+          <button id="btn-new-game" class="btn-primary btn-gold btn-large menu-btn">
+            <span class="menu-btn-icon">📖</span>
+            <span class="menu-btn-text">VÁN MỚI</span>
+          </button>
+          <button id="btn-load-game" class="btn-primary btn-purple btn-large menu-btn">
+            <span class="menu-btn-icon">💾</span>
+            <span class="menu-btn-text">TẢI VÁN</span>
+          </button>
+          <button id="btn-api-settings" class="btn-secondary btn-large menu-btn">
+            <span class="menu-btn-icon">⚙️</span>
+            <span class="menu-btn-text">CÀI ĐẶT API</span>
+          </button>
+        </div>
+        <p class="version-text">v1.0.0</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- SCREEN: API SETTINGS                                             -->
+  <!-- ================================================================ -->
+  <div id="screen-api-settings" class="screen">
+    <div class="settings-container">
+      <div class="settings-panel glass-panel">
+        <h2 class="panel-title">⚙️ Cài Đặt API</h2>
+        <p class="panel-desc">Cấu hình nhà cung cấp AI. Cần có API Key để chơi.</p>
+
+        <div class="form-group">
+          <label for="api-provider">Nhà Cung Cấp AI</label>
+          <select id="api-provider" class="form-select">
+            <option value="deepseek">DeepSeek (Trả Phí)</option>
+            <option value="gemini">Gemini 2.5 Flash (Miễn Phí)</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="api-key">API Keys (Mỗi dòng 1 key, AI sẽ tự chuyển key khi hết quota)</label>
+          <textarea id="api-key" class="form-textarea" rows="4" placeholder="sk-...&#10;AIza...&#10;Mỗi key một dòng, Enter để xuống dòng"></textarea>
+          <button type="button" id="btn-toggle-api-key" class="btn-icon-text">👁 Hiện</button>
+        </div>
+
+        <div class="settings-buttons">
+          <button id="btn-test-api" class="btn-primary btn-gold">🔍 Kiểm Tra API</button>
+          <button id="btn-save-settings" class="btn-primary btn-purple">💾 Lưu Cài Đặt</button>
+        </div>
+
+        <div id="api-test-result" class="api-test-result" style="display:none;"></div>
+
+        <details class="settings-help">
+          <summary>📖 Cách Lấy API Key</summary>
+          <div class="help-content">
+            <div id="help-deepseek" class="help-section">
+              <h4>DeepSeek</h4>
+              <ol>
+                <li>Truy cập <a href="#">platform.deepseek.com</a></li>
+                <li>Đăng ký / Đăng nhập</li>
+                <li>Vào API Keys → Tạo key mới</li>
+                <li>Sao chép key bắt đầu bằng <code>sk-</code></li>
+              </ol>
+            </div>
+            <div id="help-gemini" class="help-section">
+              <h4>Gemini 2.5 Flash</h4>
+              <ol>
+                <li>Truy cập <a href="#">aistudio.google.com</a></li>
+                <li>Đăng nhập bằng tài khoản Google</li>
+                <li>Nhấn "Get API Key"</li>
+                <li>Sao chép key bắt đầu bằng <code>AIza</code></li>
+              </ol>
+            </div>
+          </div>
+        </details>
+
+        <button id="btn-back-from-settings" class="btn-back">← Quay Lại Menu Chính</button>
+        <p style="color:#888;font-size:12px;text-align:center;margin-top:16px;">🔒 API Key sẽ bị xóa khi bạn tắt ứng dụng</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- SCREEN: NEW GAME (World + Character Creation)                    -->
+  <!-- ================================================================ -->
+  <div id="screen-new-game" class="screen">
+    <div class="new-game-header">
+      <button id="btn-back-newgame" class="btn-back">← Quay Lại</button>
+      <h2 class="panel-title">🌌 Tạo Thế Giới Của Bạn</h2>
+    </div>
+
+    <!-- Magic Button Section -->
+    <div class="magic-section">
+      <textarea id="magic-summary" class="form-textarea" rows="2" placeholder="Mô tả ngắn gọn ý tưởng cốt truyện... AI sẽ tự động điền toàn bộ form!"></textarea>
+      <button id="btn-magic" class="btn-primary btn-magic">🔮 MA THUẬT (AI Tự Động Điền)</button>
+    </div>
+
+    <div class="new-game-grid">
+      <!-- Left Column: World Settings -->
+      <div class="new-game-col">
+        <div class="glass-panel">
+          <h3 class="section-title">🌍 Thiết Lập Thế Giới</h3>
+
+          <!-- Genre -->
+          <div class="form-group">
+            <label>Thể Loại</label>
+            <div class="tag-container" id="tag-genre"></div>
+            <div class="tag-input-row">
+              <input type="text" id="input-genre-custom" class="form-input-inline" placeholder="Thể loại khác...">
+              <button id="btn-add-genre" class="btn-small btn-purple">+ Thêm</button>
+            </div>
+          </div>
+
+          <!-- World / Setting -->
+          <div class="form-group">
+            <label for="world-setting">Thế Giới / Bối Cảnh</label>
+            <textarea id="world-setting" class="form-textarea" rows="3" placeholder="Mô tả thế giới và bối cảnh..."></textarea>
+          </div>
+
+          <!-- Writing Style -->
+          <div class="form-group">
+            <label>Văn Phong</label>
+            <div class="single-select-container" id="tag-style"></div>
+            <div class="tag-input-row">
+              <input type="text" id="input-style-custom" class="form-input-inline" placeholder="Văn phong khác...">
+              <button id="btn-add-style" class="btn-small btn-purple">+ Thêm</button>
+            </div>
+          </div>
+
+          <!-- Difficulty Slider -->
+          <div class="form-group">
+            <label for="slider-difficulty">Độ Khó: <span id="difficulty-label">3 - Bình Thường</span></label>
+            <input type="range" id="slider-difficulty" min="1" max="5" value="3" step="1">
+          </div>
+
+          <!-- Word Count Preset -->
+          <div class="form-group">
+            <label for="word-count-preset">📝 Giới Hạn Số Từ Mỗi Lần AI Viết <span style="color:var(--accent-red);">*</span></label>
+            <select id="word-count-preset" class="form-select">
+              <option value="">-- Chưa chọn --</option>
+              <option value="400-600">🟢 400 - 600 từ — Siêu Tiết Kiệm (test nhanh, Gemini Free)</option>
+              <option value="600-900">🔵 600 - 900 từ — Tiết Kiệm (Gemini Free, nhiều key)</option>
+              <option value="1000-1500">🟡 1000 - 1500 từ — Cân Bằng (chất lượng tốt, DeepSeek/Gemini)</option>
+            </select>
+            <p style="color:var(--accent-red);font-size:0.75rem;margin-top:4px;">
+              ⚠️ Bắt buộc chọn. Sẽ không được tự động điền khi tải config cũ.
+            </p>
+          </div>
+
+          <!-- Fanfiction Mode -->
+          <div class="form-group">
+            <label class="toggle-label">
+              <input type="checkbox" id="toggle-fanfiction">
+              <span class="toggle-slider"></span>
+              <span>Chế Độ Đồng Nhân</span>
+            </label>
+          </div>
+          <div class="form-group" id="fanfiction-source-group" style="display:none;">
+            <label for="input-fanfiction-source">Tên Tác Phẩm Gốc</label>
+            <input type="text" id="input-fanfiction-source" class="form-input" placeholder="Tên tác phẩm gốc...">
+          </div>
+
+          <!-- NSFW Mode -->
+          <div class="form-group">
+            <label class="toggle-label">
+              <input type="checkbox" id="toggle-nsfw">
+              <span class="toggle-slider"></span>
+              <span>Chế Độ NSFW (AI Không Giới Hạn)</span>
+            </label>
+          </div>
+
+          <!-- Core Rules -->
+          <div class="form-group">
+            <label>Luật Lệ Cốt Lõi</label>
+            <div id="rules-list" class="dynamic-list"></div>
+            <div class="tag-input-row">
+              <input type="text" id="input-rule" class="form-input-inline" placeholder="Thêm luật lệ...">
+              <button id="btn-add-rule" class="btn-small btn-gold">+ Thêm</button>
+            </div>
+          </div>
+
+          <!-- Entities -->
+          <div class="form-group">
+            <label>Thực Thể (Nhân Vật / Vật Phẩm / Địa Điểm)</label>
+            <div id="entities-list" class="dynamic-list"></div>
+            <div class="entity-input-row">
+              <select id="entity-type" class="form-select-inline">
+                <option value="character">Nhân Vật</option>
+                <option value="item">Vật Phẩm</option>
+                <option value="location">Địa Điểm</option>
+              </select>
+              <input type="text" id="entity-name" class="form-input-inline" placeholder="Tên...">
+            </div>
+            <div id="entity-char-fields" style="margin-top:6px;">
+              <div class="entity-input-row" style="margin-bottom:4px;">
+                <input type="text" id="entity-gender" class="form-input-inline" placeholder="Giới tính..." style="max-width:120px;">
+                <input type="text" id="entity-personality" class="form-input-inline" placeholder="Tính cách...">
+              </div>
+              <textarea id="entity-backstory" class="form-textarea" rows="2" placeholder="Tiểu sử / Mô tả nhân vật..." style="margin-bottom:6px;"></textarea>
+            </div>
+            <button id="btn-add-entity" class="btn-small btn-gold">+ Thêm</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Column: Main Character -->
+      <div class="new-game-col">
+        <div class="glass-panel">
+          <h3 class="section-title">🧑 Nhân Vật Chính</h3>
+
+          <div class="form-group">
+            <label for="char-name">Tên Nhân Vật</label>
+            <input type="text" id="char-name" class="form-input" placeholder="Nhập tên nhân vật...">
+          </div>
+
+          <div class="form-group">
+            <label>Giới Tính</label>
+            <div class="single-select-container" id="tag-gender"></div>
+          </div>
+
+          <div class="form-group">
+            <label>Tính Cách</label>
+            <div class="tag-container" id="tag-personality"></div>
+            <div class="tag-input-row">
+              <input type="text" id="input-personality-custom" class="form-input-inline" placeholder="Tính cách khác...">
+              <button id="btn-add-personality" class="btn-small btn-purple">+ Thêm</button>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="char-backstory">Tiểu Sử</label>
+            <textarea id="char-backstory" class="form-textarea" rows="4" placeholder="Quá khứ và xuất thân của nhân vật..."></textarea>
+          </div>
+
+          <div class="form-group">
+            <label>Kỹ Năng Khởi Đầu</label>
+            <div id="skills-list" class="dynamic-list"></div>
+            <div class="skill-input-row">
+              <input type="text" id="input-skill-name" class="form-input-inline" placeholder="Tên kỹ năng...">
+              <input type="text" id="input-skill-desc" class="form-input-inline" placeholder="Nội dung...">
+              <input type="text" id="input-skill-level" class="form-input-inline" placeholder="Cấp độ..." style="max-width:110px;">
+              <button id="btn-add-skill" class="btn-small btn-gold">+ Thêm</button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Action Buttons -->
+    <div class="new-game-actions">
+      <button id="btn-save-world-config" class="btn-secondary">💾 Lưu Config</button>
+      <button id="btn-load-world-config" class="btn-secondary">📂 Tải Config</button>
+      <button id="btn-reset-form" class="btn-danger">🗑 Xóa Form</button>
+      <button id="btn-start-adventure" class="btn-primary btn-magic btn-large">⚔️ BẮT ĐẦU CUỘC PHIÊU LƯU</button>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- SCREEN: LOAD GAME                                                -->
+  <!-- ================================================================ -->
+  <div id="screen-load-game" class="screen">
+    <div class="load-game-container">
+      <div class="glass-panel" style="max-width:700px;margin:40px auto;">
+        <h2 class="panel-title">💾 Tải Ván Chơi</h2>
+        <div class="load-options">
+          <button id="btn-load-from-slot" class="btn-primary btn-purple">📂 Tải Từ Slot Lưu</button>
+          <button id="btn-load-from-file" class="btn-primary btn-gold">📄 Tải Từ File JSON</button>
+        </div>
+        <div id="save-slots-list" class="save-slots-list" style="display:none;">
+          <h4>Slot Lưu</h4>
+          <div id="slots-container"></div>
+          <button id="btn-refresh-slots" class="btn-secondary">🔄 Làm Mới</button>
+        </div>
+        <button id="btn-back-from-load" class="btn-back">← Quay Lại Menu Chính</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- SCREEN: GAME                                                     -->
+  <!-- ================================================================ -->
+  <div id="screen-game" class="screen">
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <button id="btn-toggle-menu" class="btn-icon" title="Menu">☰</button>
+        <div class="menu-tabs" id="menu-tabs">
+          <button class="menu-tab" data-tab="tab-character">🧑 Nhân Vật</button>
+          <button class="menu-tab" data-tab="tab-npcs">👥 NPC</button>
+          <button class="menu-tab" data-tab="tab-world">🌍 Thế Giới</button>
+          <button class="menu-tab" data-tab="tab-journal">📋 Nhật Ký</button>
+        </div>
+      </div>
+      <div class="topbar-center">
+        <span class="game-title-small">DEEPSEEK NOVEL GAME</span>
+      </div>
+      <div class="topbar-right">
+        <button id="btn-save-slot" class="btn-topbar">💾 Lưu Slot</button>
+        <button id="btn-export-json" class="btn-topbar">📄 Xuất JSON</button>
+        <button id="btn-exit-game" class="btn-topbar btn-topbar-danger">🚪 Thoát</button>
+      </div>
+    </div>
+
+    <!-- Menu Panel (collapsible) -->
+    <div id="menu-panel" class="menu-panel">
+      <div class="menu-panel-content">
+        <div id="tab-character" class="menu-tab-content active">
+          <h4>🧑 Nhân Vật Chính</h4>
+          <div id="char-panel-bio"></div>
+          <div id="char-panel-skills"></div>
+          <div id="char-panel-inventory"></div>
+        </div>
+        <div id="tab-npcs" class="menu-tab-content">
+          <h4>👥 NPC</h4>
+          <div id="npcs-content"></div>
+        </div>
+        <div id="tab-world" class="menu-tab-content">
+          <h4>🌍 Thông Tin Thế Giới</h4>
+          <div id="world-info-content"></div>
+        </div>
+        <div id="tab-journal" class="menu-tab-content">
+          <h4>📋 Nhật Ký</h4>
+          <div id="journal-content"></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Story Area -->
+    <div class="game-main">
+      <!-- Search Bar -->
+      <div id="search-bar" class="search-bar" style="display:none;">
+        <input type="text" id="search-input" placeholder="Tìm trong câu chuyện...">
+        <span id="search-count">0/0</span>
+        <button id="btn-search-prev" class="btn-search-nav">▲</button>
+        <button id="btn-search-next" class="btn-search-nav">▼</button>
+        <button id="btn-search-close" class="btn-search-close">✕</button>
+      </div>
+
+      <!-- Story Text -->
+      <div id="story-container" class="story-container">
+        <div id="story-text" class="story-text">
+          <p class="story-placeholder">Cuộc phiêu lưu của bạn sẽ hiển thị ở đây...</p>
+        </div>
+      </div>
+
+      <button id="btn-export-story" class="btn-copy-story" title="Xuất câu chuyện ra file Word">📄</button>
+      <button id="btn-scroll-top" class="btn-scroll-nav" title="Nhảy lên đầu trang">⬆</button>
+      <button id="btn-scroll-bottom" class="btn-scroll-nav" title="Nhảy xuống cuối trang">⬇</button>
+    </div>
+
+    <!-- Action Bar -->
+    <div class="action-bar">
+      <div class="action-bar-inner">
+        <input type="text" id="action-input" class="action-input" placeholder="Bạn làm gì? (Enter để gửi)">
+        <button id="btn-action" class="btn-primary btn-gold">▶ Hành Động</button>
+        <button id="btn-narrate" class="btn-primary btn-purple">📖 Tường Thuật</button>
+        <button id="btn-suggest" class="btn-primary btn-gold">💡 Gợi Ý</button>
+      </div>
+    </div>
+
+    <!-- Suggestions Panel -->
+    <div id="suggestions-panel" class="suggestions-panel" style="display:none;">
+      <div class="suggestions-header">
+        <h4>💡 Gợi Ý Hành Động</h4>
+        <div class="suggestions-header-buttons">
+          <button id="btn-minimize-suggestions" class="btn-search-nav" title="Thu nhỏ">─</button>
+          <button id="btn-close-suggestions" class="btn-search-close" title="Đóng">✕</button>
+        </div>
+      </div>
+      <div id="suggestions-grid" class="suggestions-grid"></div>
+    </div>
+
+    <!-- Minimized Suggestions Bar -->
+    <div id="suggestions-minimized" class="suggestions-minimized" style="display:none;">
+      <button id="btn-restore-suggestions" class="btn-minimize-restore">💡 Gợi Ý ▸</button>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="loading-overlay" style="display:none;">
+      <div class="loading-spinner"></div>
+      <p>AI đang viết câu chuyện...</p>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- TOAST NOTIFICATIONS                                              -->
+  <!-- ================================================================ -->
+  <div id="toast-container" class="toast-container"></div>
+
+  <!-- ================================================================ -->
+  <!-- SAVE DIALOG                                                      -->
+  <!-- ================================================================ -->
+  <div id="save-dialog-overlay" class="dialog-overlay" style="display:none;">
+    <div class="dialog glass-panel">
+      <h3>💾 Lưu Ván Chơi</h3>
+      <input type="text" id="save-slot-name" class="form-input" placeholder="Nhập tên bản lưu...">
+      <div class="dialog-buttons">
+        <button id="btn-confirm-save" class="btn-primary btn-gold">Lưu</button>
+        <button id="btn-cancel-save" class="btn-secondary">Hủy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- CONFIRM DIALOG (replaces native confirm())                       -->
+  <!-- ================================================================ -->
+  <div id="confirm-dialog-overlay" class="dialog-overlay" style="display:none;">
+    <div class="dialog glass-panel">
+      <h3 id="confirm-dialog-title">Xác Nhận</h3>
+      <p id="confirm-dialog-message" style="color:var(--text-secondary);margin-bottom:16px;line-height:1.6;"></p>
+      <div class="dialog-buttons">
+        <button id="btn-confirm-ok" class="btn-primary btn-gold">OK</button>
+        <button id="btn-confirm-cancel" class="btn-secondary">Hủy</button>
+      </div>
+    </div>
+  </div>
+
+</div>
+
+<script src="deepseek-api.js"></script>
+<script src="storage.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
