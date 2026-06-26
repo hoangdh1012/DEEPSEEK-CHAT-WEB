@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DeepSeek Novel Game — Trò Chơi Tiểu Thuyết AI</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: Inter, -apple-system, sans-serif; background: #0f0e17; color: #e2e8f0; padding: 40px; }
+    .container { max-width: 780px; margin: 0 auto; }
+    h1 { font-size: 3rem; background: linear-gradient(135deg, #ffb800, #8b5cf6); -webkit-background-clip: text; -webkit-text-fill-color: transparent; margin-bottom: 8px; }
+    .subtitle { color: #94a3b8; margin-bottom: 32px; font-size: 1.1rem; }
+    .badges { display: flex; gap: 10px; margin-bottom: 32px; flex-wrap: wrap; }
+    .badge { display: inline-block; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); }
+    .badge.ai { border-color: rgba(139,92,246,0.4); color: #a78bfa; }
+    .badge.game { border-color: rgba(255,184,0,0.4); color: #fbbf24; }
+    h2 { margin-top: 36px; margin-bottom: 14px; color: #ffb800; font-size: 1.3rem; }
+    p { line-height: 1.8; margin-bottom: 12px; color: #94a3b8; }
+    code { background: rgba(255,255,255,0.06); padding: 2px 8px; border-radius: 4px; font-size: 0.85rem; }
+    pre { background: #1a1930; padding: 20px; border-radius: 10px; overflow-x: auto; margin: 12px 0; border: 1px solid rgba(255,255,255,0.06); }
+    pre code { background: none; padding: 0; }
+    ul, ol { margin-left: 24px; line-height: 2; color: #94a3b8; }
+    a { color: #8b5cf6; }
+    table { width: 100%; border-collapse: collapse; margin: 12px 0; }
+    th, td { padding: 10px 14px; text-align: left; border: 1px solid rgba(255,255,255,0.06); font-size: 0.9rem; }
+    th { background: rgba(255,255,255,0.04); color: #ffb800; }
+    td { color: #94a3b8; }
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 10px; margin: 16px 0; }
+    .feature { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.06); border-radius: 8px; padding: 14px; font-size: 0.9rem; }
+    .feature .icon { font-size: 1.3rem; margin-bottom: 6px; }
+    .feature strong { color: #e2e8f0; display: block; margin-bottom: 4px; }
+    .feature span { color: #64748b; font-size: 0.82rem; }
+  </style>
+</head>
+<body>
+<div class="container">
+
+<h1>DeepSeek Novel Game</h1>
+<p class="subtitle">🎮 Trò chơi tiểu thuyết tương tác AI — tạo thế giới, nhập vai nhân vật, để AI viết nên cuộc phiêu lưu của bạn.</p>
+
+<div class="badges">
+  <span class="badge ai">🤖 AI-Powered</span>
+  <span class="badge game">🎲 Interactive Novel</span>
+  <span class="badge">🌐 Web App</span>
+  <span class="badge">🇻🇳 Tiếng Việt</span>
+  <span class="badge">MIT License</span>
+</div>
+
+<h2>✨ Tính Năng</h2>
+<div class="features">
+  <div class="feature"><div class="icon">🌍</div><strong>Tạo Thế Giới</strong><span>Thể loại, bối cảnh, văn phong, độ khó, luật lệ, thực thể</span></div>
+  <div class="feature"><div class="icon">🧑</div><strong>Nhân Vật Chính</strong><span>Tên, giới tính, tính cách, tiểu sử, kỹ năng</span></div>
+  <div class="feature"><div class="icon">🔮</div><strong>Ma Thuật</strong><span>AI tự động điền form từ ý tưởng cốt truyện</span></div>
+  <div class="feature"><div class="icon">📖</div><strong>Viết Truyện</strong><span>DeepSeek hoặc Gemini viết tiếp câu chuyện</span></div>
+  <div class="feature"><div class="icon">💡</div><strong>Gợi Ý</strong><span>AI đề xuất 4 hành động kèm tỷ lệ thành công</span></div>
+  <div class="feature"><div class="icon">🌓</div><strong>2 Theme</strong><span>Dark Fantasy + Warm Light</span></div>
+  <div class="feature"><div class="icon">💾</div><strong>Lưu/Tải</strong><span>Save slot + Export JSON</span></div>
+  <div class="feature"><div class="icon">👥</div><strong>NPC</strong><span>Quản lý nhân vật, vật phẩm, địa điểm</span></div>
+</div>
+
+<h2>🚀 Chạy Web App</h2>
+<pre><code>git clone https://github.com/hoangdh1012/DEEPSEEK-CHAT-WEB.git
+cd DEEPSEEK-CHAT-WEB
+npm install
+node server.js
+# Mở http://localhost:3000</code></pre>
+
+<h2>🔑 Hỗ Trợ API</h2>
+<table>
+  <tr><th>Provider</th><th>Giá</th><th>Ghi Chú</th></tr>
+  <tr><td>DeepSeek</td><td>Trả phí</td><td>Tokenize tiếng Việt tốt, chất lượng cao</td></tr>
+  <tr><td>Gemini 2.5 Flash</td><td>Miễn phí</td><td>Cần nhiều token hơn cho tiếng Việt</td></tr>
+</table>
+
+<h2>📦 Desktop App</h2>
+<p>Tải bản <code>.exe</code> từ <a href="https://github.com/hoangdh1012/DEEPSEEK-CHAT-WEB/releases">Releases</a> — chạy ngay không cần Node.js.</p>
+
+<h2>🤝 Đóng Góp</h2>
+<p>Xem <a href="CONTRIBUTING.md">CONTRIBUTING.md</a> — mọi đóng góp đều được chào đón!</p>
+
+<h2>📄 License</h2>
+<p>MIT — xem file <a href="LICENSE">LICENSE</a>.</p>
+
+</div>
+</body>
+</html>
