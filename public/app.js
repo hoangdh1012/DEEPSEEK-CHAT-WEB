@@ -1125,8 +1125,8 @@
       );
       const titleResponse = await window.novelAI.sendMessage(
         titlePrompt,
-        [{ role: 'user', content: `Hãy tạo một tiêu đề truyện hấp dẫn, độc đáo bằng tiếng Việt cho câu chuyện này. Chỉ trả về tiêu đề, không thêm gì khác. Nếu tiêu đề bị cắt, hãy viết lại cho đầy đủ.` }],
-        200
+        [{ role: 'user', content: `Hãy tạo một tiêu đề truyện hấp dẫn, độc đáo bằng tiếng Việt cho câu chuyện này. Chỉ trả về tiêu đề, không thêm gì khác. Tiêu đề phải đầy đủ, không được cắt ngang hay thiếu chữ.` }],
+        500
       );
       state.storyTitle = titleResponse.trim().replace(/^["']|["']$/g, '');
 
