@@ -6,65 +6,119 @@
 class NovelAI {
   constructor() {
     this.provider = 'deepseek';
-    this.apiKeys = [];
+    this.apiKeys = [];          // DeepSeek: all keys / Gemini: everything-else keys
+    this.writerKeys = [];       // Gemini only: writer keys (story + title)
     this.currentKeyIndex = 0;
+    this.currentWriterIndex = 0;
     this.apiKey = '';
-    this.serverURL = ''; // Auto-detected: same origin
+    this.serverURL = '';
   }
 
   // Set config with multiple keys
-  setConfig(provider, apiKeysInput) {
+  // For Gemini: apiKeysInput = everything-else keys, writerKeysInput = writer keys
+  // For DeepSeek: apiKeysInput = all keys, writerKeysInput ignored
+  setConfig(provider, apiKeysInput, writerKeysInput) {
     this.provider = provider;
-    if (Array.isArray(apiKeysInput)) {
-      this.apiKeys = apiKeysInput.map(k => k.trim()).filter(k => k.length > 0);
-    } else if (typeof apiKeysInput === 'string') {
-      this.apiKeys = apiKeysInput
-        .split('\n')
-        .map(k => k.trim())
-        .filter(k => k.length > 0);
+
+    const parseKeys = (input) => {
+      if (Array.isArray(input)) return input.map(k => k.trim()).filter(k => k.length > 0);
+      if (typeof input === 'string') return input.split('\n').map(k => k.trim()).filter(k => k.length > 0);
+      return [];
+    };
+
+    this.apiKeys = parseKeys(apiKeysInput);
+
+    if (provider === 'gemini' && writerKeysInput) {
+      this.writerKeys = parseKeys(writerKeysInput);
     } else {
-      this.apiKeys = [];
+      this.writerKeys = [];
     }
+
     this.currentKeyIndex = 0;
+    this.currentWriterIndex = 0;
     this.apiKey = this.apiKeys.length > 0 ? this.apiKeys[0] : '';
-    console.log(`[NovelAI Web] Loaded ${this.apiKeys.length} API key(s)`);
+
+    if (provider === 'gemini') {
+      console.log(`[NovelAI Web] Gemini: ${this.writerKeys.length} writer key(s) + ${this.apiKeys.length} everything key(s)`);
+    } else {
+      console.log(`[NovelAI Web] DeepSeek: ${this.apiKeys.length} API key(s)`);
+    }
   }
 
-  _getServerURL() {
-    // Use same origin for the proxy
-    return window.location.origin;
+  // Get key for a specific task type. For Gemini, route to writer or everything pool.
+  _getKeyForTask(taskType) {
+    if (this.provider !== 'gemini') return this.apiKeys.length > 0 ? this.apiKeys[0] : '';
+
+    // Task types that use the writer pool
+    const WRITER_TASKS = ['story', 'opening', 'title'];
+    if (WRITER_TASKS.includes(taskType) && this.writerKeys.length > 0) {
+      return this.writerKeys[this.currentWriterIndex];
+    }
+    // Everything else uses the everything pool
+    return this.apiKeys.length > 0 ? this.apiKeys[0] : '';
   }
 
-  _tryNextKey() {
+  // Rotate to next key on failure
+  _tryNextKey(taskType) {
+    if (this.provider !== 'gemini') {
+      // DeepSeek: simple rotation
+      this.currentKeyIndex++;
+      if (this.currentKeyIndex < this.apiKeys.length) {
+        this.apiKey = this.apiKeys[this.currentKeyIndex];
+        console.log(`[NovelAI] Switched to DeepSeek key #${this.currentKeyIndex + 1}/${this.apiKeys.length}`);
+        return true;
+      }
+      this.apiKey = '';
+      return false;
+    }
+
+    // Gemini: rotate in the appropriate pool
+    const WRITER_TASKS = ['story', 'opening', 'title'];
+    if (WRITER_TASKS.includes(taskType) && this.writerKeys.length > 0) {
+      this.currentWriterIndex++;
+      if (this.currentWriterIndex < this.writerKeys.length) {
+        console.log(`[NovelAI] Switched to Gemini writer key #${this.currentWriterIndex + 1}/${this.writerKeys.length}`);
+        return true;
+      }
+      return false;
+    }
+
+    // Everything-else pool
     this.currentKeyIndex++;
     if (this.currentKeyIndex < this.apiKeys.length) {
       this.apiKey = this.apiKeys[this.currentKeyIndex];
-      console.log(`[NovelAI] Switched to key #${this.currentKeyIndex + 1}/${this.apiKeys.length}`);
+      console.log(`[NovelAI] Switched to Gemini everything key #${this.currentKeyIndex + 1}/${this.apiKeys.length}`);
       return true;
     }
-    console.log('[NovelAI] All keys exhausted');
     this.apiKey = '';
     return false;
   }
 
   _resetKeyIndex() {
     this.currentKeyIndex = 0;
+    this.currentWriterIndex = 0;
     this.apiKey = this.apiKeys.length > 0 ? this.apiKeys[0] : '';
   }
 
   // ─── Test API Key ───
   async testConnection() {
-    if (this.apiKeys.length === 0) throw new Error('No API keys configured');
+    const allKeys = this.provider === 'gemini'
+      ? [...this.apiKeys, ...this.writerKeys]
+      : [...this.apiKeys];
+
+    if (allKeys.length === 0) throw new Error('No API keys configured');
     this._resetKeyIndex();
 
     let lastError = null;
-    for (let i = 0; i < this.apiKeys.length; i++) {
-      this.apiKey = this.apiKeys[i];
-      this.currentKeyIndex = i;
+    for (let i = 0; i < allKeys.length; i++) {
+      this.apiKey = allKeys[i];
       try {
         const result = await this._testApi();
         if (result && result.success) {
-          return { success: true, message: result.content || 'Kết nối thành công', keyIndex: i };
+          const pool = this.provider === 'gemini'
+            ? (i < this.apiKeys.length ? 'Everything' : 'Writer')
+            : '';
+          return { success: true, message: `Kết nối thành công (${pool} pool)`, keyIndex: i };
         }
         throw new Error(result?.error || 'Kết nối thất bại');
       } catch (e) {
@@ -72,12 +126,12 @@ class NovelAI {
         console.log(`[NovelAI] Key #${i + 1} failed: ${e.message}`);
       }
     }
-    throw new Error(`Tất cả ${this.apiKeys.length} key đều thất bại. Lỗi cuối: ${lastError?.message || 'Unknown'}`);
+    throw new Error(`Tất cả ${allKeys.length} key đều thất bại. Lỗi cuối: ${lastError?.message || 'Unknown'}`);
   }
 
   async _testApi() {
     const endpoint = this.provider === 'deepseek' ? '/api/deepseek' : '/api/gemini';
-    const serverURL = this._getServerURL();
+    const serverURL = window.location.origin;
 
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 25000); // 25s timeout
@@ -199,14 +253,25 @@ You are writing for a Game Master / novelist creating adult fiction. NSFW mode i
     return prompt;
   }
 
-  // ─── Chat with AI (with key rotation) ───
-  async sendMessage(systemPrompt, messages, maxTokens = 4096, retries = 2) {
-    if (this.apiKeys.length === 0) throw new Error('No API keys configured');
+  // ─── Chat with AI (with key rotation + task routing for Gemini) ───
+  // taskType: 'story' | 'title' | 'suggest' | 'journal' | 'status' | 'magic' | 'test'
+  async sendMessage(systemPrompt, messages, maxTokens = 4096, retries = 2, taskType = 'story') {
+    if (this.apiKeys.length === 0 && this.writerKeys.length === 0) {
+      throw new Error('No API keys configured');
+    }
 
     let lastError = null;
-    for (let keyAttempt = this.currentKeyIndex; keyAttempt < this.apiKeys.length; keyAttempt++) {
-      this.apiKey = this.apiKeys[keyAttempt];
-      this.currentKeyIndex = keyAttempt;
+
+    // For Gemini with dual pools, pick the right pool
+    let keyPool = this.apiKeys;
+    let poolName = 'everything';
+    if (this.provider === 'gemini' && ['story', 'opening', 'title'].includes(taskType) && this.writerKeys.length > 0) {
+      keyPool = this.writerKeys;
+      poolName = 'writer';
+    }
+
+    for (let keyAttempt = 0; keyAttempt < keyPool.length; keyAttempt++) {
+      const activeKey = keyPool[keyAttempt];
 
       for (let attempt = 0; attempt <= retries; attempt++) {
         try {
@@ -216,13 +281,13 @@ You are writing for a Game Master / novelist creating adult fiction. NSFW mode i
           ];
 
           const endpoint = this.provider === 'deepseek' ? '/api/deepseek' : '/api/gemini';
-          const serverURL = this._getServerURL();
+          const serverURL = window.location.origin;
 
           const response = await fetch(`${serverURL}${endpoint}`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              apiKey: this.apiKey,
+              apiKey: activeKey,
               messages: allMessages,
               temperature: 0.9,
               maxTokens: maxTokens,
@@ -250,7 +315,7 @@ You are writing for a Game Master / novelist creating adult fiction. NSFW mode i
           }
 
           lastError = new Error(msg || 'Unknown error');
-          console.log(`[NovelAI] Key #${keyAttempt + 1} attempt ${attempt + 1} failed: ${msg}`);
+          console.log(`[NovelAI] Gemini ${poolName} key #${keyAttempt + 1} attempt ${attempt + 1} failed: ${msg}`);
 
           if (isQuotaError || attempt >= retries) {
             break;
@@ -258,7 +323,7 @@ You are writing for a Game Master / novelist creating adult fiction. NSFW mode i
           await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
         } catch (e) {
           lastError = e;
-          console.log(`[NovelAI] Key #${keyAttempt + 1} attempt ${attempt + 1} failed: ${e.message}`);
+          console.log(`[NovelAI] Gemini ${poolName} key #${keyAttempt + 1} attempt ${attempt + 1} failed: ${e.message}`);
           if (e.message.includes('quota') || e.message.includes('429') || attempt >= retries) {
             break;
           }
@@ -267,7 +332,7 @@ You are writing for a Game Master / novelist creating adult fiction. NSFW mode i
       }
     }
 
-    throw new Error(`Tất cả ${this.apiKeys.length} API key đều đã hết quota hoặc bị lỗi. Lỗi cuối: ${lastError?.message || 'Unknown'}`);
+    throw new Error(`Gemini ${poolName} pool: tất cả ${keyPool.length} key đều hết quota hoặc lỗi. Lỗi cuối: ${lastError?.message || 'Unknown'}`);
   }
 
   // ─── Auto-fill (Magic Button) ───
@@ -305,7 +370,7 @@ Trả về CHỈ JSON hợp lệ với cấu trúc chính xác này (không mark
     const text = await this.sendMessage(
       'You are a creative world-building assistant. You always respond with valid JSON only.',
       [{ role: 'user', content: prompt }],
-      4096
+      4096, 2, 'magic'
     );
 
     return this._parseAutoFillJSON(text);
@@ -391,7 +456,7 @@ Trả về CHỈ JSON hợp lệ với cấu trúc này (toàn bộ nội dung b
     const text = await this.sendMessage(
       'You are a creative game master. Return only valid JSON.',
       [{ role: 'user', content: prompt }],
-      4096
+      4096, 2, 'suggest'
     );
 
     return this._parseSuggestionsJSON(text);
@@ -425,16 +490,22 @@ Trả về CHỈ JSON hợp lệ với cấu trúc này (toàn bộ nội dung b
   async generateJournalSummary(lastStoryChunk) {
     if (this.apiKeys.length === 0) throw new Error('No API keys configured');
 
+    // Escape quotes & special chars to prevent prompt breakage
+    const safeChunk = JSON.stringify(lastStoryChunk.slice(-2000));
+
+    // Gemini needs more tokens for Vietnamese; DeepSeek is efficient
+    const journalMaxTokens = this.provider === 'gemini' ? 768 : 350;
+
     const prompt = `Tóm tắt diễn biến câu chuyện sau đây thành CHÍNH XÁC MỘT CÂU tiếng Việt, dài khoảng 30-60 từ, bao quát đầy đủ các sự kiện chính:
 
-"${lastStoryChunk.slice(-2000)}"
+${safeChunk}
 
 Chỉ trả về đúng một câu tóm tắt, không thêm gì khác.`;
 
     const text = await this.sendMessage(
       'Bạn là người tóm tắt nhật ký. Luôn trả lời chính xác MỘT câu bằng tiếng Việt, đầy đủ ý, không cắt ngang.',
       [{ role: 'user', content: prompt }],
-      350
+      journalMaxTokens, 2, 'journal'
     );
 
     return text.trim();

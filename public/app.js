@@ -154,15 +154,31 @@
       document.getElementById('api-provider').value = config.provider;
       const keys = Array.isArray(config.apiKeys) ? config.apiKeys : (config.apiKey ? [config.apiKey] : []);
       document.getElementById('api-key').value = keys.join('\n');
-      updateApiKeyPlaceholder();
+      // Gemini writer keys
+      const writerKeys = Array.isArray(config.writerKeys) ? config.writerKeys : [];
+      const writerEl = document.getElementById('api-key-writer');
+      if (writerEl) writerEl.value = writerKeys.join('\n');
     }
     document.getElementById('api-test-result').style.display = 'none';
+    updateApiKeyPlaceholder();
   }
 
   function updateApiKeyPlaceholder() {
     const provider = document.getElementById('api-provider').value;
     const input = document.getElementById('api-key');
     input.placeholder = provider === 'deepseek' ? 'sk-...' : 'AIza...';
+
+    // Show/hide appropriate key groups
+    const deepseekGroup = document.getElementById('api-key-group-deepseek');
+    const geminiGroup = document.getElementById('api-key-group-gemini');
+    if (deepseekGroup) deepseekGroup.style.display = provider === 'deepseek' ? 'block' : 'none';
+    if (geminiGroup) geminiGroup.style.display = provider === 'gemini' ? 'block' : 'none';
+
+    // Auto-fill "sk-" for DeepSeek
+    if (provider === 'deepseek' && !input.value.trim()) {
+      input.value = 'sk-';
+    }
+
     document.getElementById('help-deepseek').style.display = provider === 'deepseek' ? 'block' : 'none';
     document.getElementById('help-gemini').style.display = provider === 'gemini' ? 'block' : 'none';
   }
@@ -186,9 +202,52 @@
       }
     });
 
+    // Gemini: toggle visibility for the Gemini key group
+    const btnToggleGemini = document.getElementById('btn-toggle-api-key-gemini');
+    if (btnToggleGemini) {
+      btnToggleGemini.addEventListener('click', () => {
+        const writerEl = document.getElementById('api-key-writer');
+        const everythingEl = document.getElementById('api-key-everything');
+        [writerEl, everythingEl].forEach(input => {
+          if (!input) return;
+          if (input.dataset.visible === 'true') {
+            input.style.webkitTextSecurity = 'disc';
+            input.style.textSecurity = 'disc';
+            input.dataset.visible = 'false';
+          } else {
+            input.style.webkitTextSecurity = 'none';
+            input.style.textSecurity = 'none';
+            input.dataset.visible = 'true';
+          }
+        });
+        btnToggleGemini.textContent = (writerEl?.dataset.visible === 'true') ? '🙈 Ẩn' : '👁 Hiện';
+      });
+    }
+
     document.getElementById('btn-save-settings').addEventListener('click', () => {
       const provider = document.getElementById('api-provider').value;
       const apiKeyRaw = document.getElementById('api-key')?.value?.trim();
+
+      if (provider === 'gemini') {
+        // Gemini: save writer keys + everything keys
+        const writerRaw = document.getElementById('api-key-writer')?.value?.trim() || '';
+        const everythingRaw = document.getElementById('api-key-everything')?.value?.trim() || '';
+
+        if (!writerRaw && !everythingRaw) {
+          showToast('Vui lòng nhập ít nhất 1 API Key cho Writer hoặc Everything Else', 'warning');
+          return;
+        }
+        const writerKeys = writerRaw.split('\n').map(k => k.trim()).filter(k => k.length > 0);
+        const everythingKeys = everythingRaw.split('\n').map(k => k.trim()).filter(k => k.length > 0);
+
+        window.gameStorage.saveApiConfig(provider, everythingKeys, writerKeys);
+        window.novelAI.setConfig(provider, everythingKeys, writerKeys);
+        const totalKeys = writerKeys.length + everythingKeys.length;
+        showToast(`Đã lưu ${totalKeys} Gemini key (${writerKeys.length} Writer + ${everythingKeys.length} Everything)!`, 'success');
+        return;
+      }
+
+      // DeepSeek: single pool
       if (!apiKeyRaw) {
         showToast('Vui lòng nhập ít nhất 1 API Key', 'warning');
         return;
@@ -1124,11 +1183,11 @@
         state.gameWorld.wordCount
       );
       // Dynamic maxTokens based on provider: DeepSeek efficient, Gemini needs more
-      const titleTokens = window.novelAI.provider === 'gemini' ? 512 : 256;
+      const titleTokens = window.novelAI.provider === 'gemini' ? 512 : 100;
       const titleResponse = await window.novelAI.sendMessage(
         titlePrompt,
         [{ role: 'user', content: `Hãy tạo một tiêu đề truyện hấp dẫn, độc đáo bằng tiếng Việt cho câu chuyện này. Chỉ trả về tiêu đề, không thêm gì khác. Tiêu đề phải đầy đủ, không được cắt ngang hay thiếu chữ.` }],
-        titleTokens
+        titleTokens, 2, 'title'
       );
       state.storyTitle = titleResponse.trim().replace(/^["']|["']$/g, '');
 
@@ -1141,7 +1200,7 @@
       const openingPrompt = `Hãy viết cảnh mở đầu cho câu chuyện "${state.storyTitle}". Đây là cảnh ĐẦU TIÊN. Giới thiệu nhân vật chính ${state.gameCharacter.name}, bối cảnh, và tạo một tình huống mở đầu hấp dẫn để người chơi bắt đầu tương tác. Viết bằng tiếng Việt, đúng số từ đã yêu cầu.`;
       
       const maxTokens = wordCountToTokens(state.gameWorld.wordCount);
-      const storyContent = await window.novelAI.sendMessage(systemPrompt, [{ role: 'user', content: openingPrompt }], maxTokens);
+      const storyContent = await window.novelAI.sendMessage(systemPrompt, [{ role: 'user', content: openingPrompt }], maxTokens, 2, 'opening');
 
       state.storyHistory.push({ role: 'assistant', content: storyContent });
       state.storyHTML.push({ type: 'title', content: state.storyTitle });
@@ -1178,7 +1237,7 @@
         state.gameWorld.wordCount
       );
       const maxTokens = wordCountToTokens(state.gameWorld.wordCount);
-      const storyContent = await window.novelAI.sendMessage(systemPrompt, state.storyHistory.slice(-10), maxTokens);
+      const storyContent = await window.novelAI.sendMessage(systemPrompt, state.storyHistory.slice(-10), maxTokens, 2, 'story');
 
       state.storyHistory.push({ role: 'assistant', content: storyContent });
       state.storyHTML.push({ type: 'story', content: storyContent });
@@ -1207,7 +1266,7 @@
       const narratePrompt = { role: 'user', content: '(Người chơi chọn tiếp tục theo dõi câu chuyện. Hãy viết tiếp diễn biến tiếp theo một cách tự nhiên và hấp dẫn. Đừng hỏi người chơi phải làm gì.)' };
       
       const maxTokens = wordCountToTokens(state.gameWorld.wordCount);
-      const storyContent = await window.novelAI.sendMessage(systemPrompt, [...state.storyHistory.slice(-9), narratePrompt], maxTokens);
+      const storyContent = await window.novelAI.sendMessage(systemPrompt, [...state.storyHistory.slice(-9), narratePrompt], maxTokens, 2, 'story');
 
       state.storyHistory.push({ role: 'assistant', content: storyContent });
       state.storyHTML.push({ type: 'story', content: storyContent });

@@ -67,10 +67,22 @@
           </select>
         </div>
 
-        <div class="form-group">
+        <div class="form-group" id="api-key-group-deepseek">
           <label for="api-key">API Keys (Mỗi dòng 1 key, AI sẽ tự chuyển key khi hết quota)</label>
-          <textarea id="api-key" class="form-textarea" rows="4" placeholder="sk-...&#10;AIza...&#10;Mỗi key một dòng, Enter để xuống dòng"></textarea>
+          <textarea id="api-key" class="form-textarea" rows="4" placeholder="sk-...&#10;Mỗi key một dòng, Enter để xuống dòng"></textarea>
           <button type="button" id="btn-toggle-api-key" class="btn-icon-text">👁 Hiện</button>
+        </div>
+
+        <div class="form-group" id="api-key-group-gemini" style="display:none;">
+          <label for="api-key-writer">✍️ Key Writer (Viết Truyện + Tiêu Đề)</label>
+          <textarea id="api-key-writer" class="form-textarea" rows="3" placeholder="AIza...&#10;Mỗi key một dòng, Enter để xuống dòng"></textarea>
+          <p style="color:var(--text-muted);font-size:0.7rem;margin-top:2px;">Dùng cho tác vụ chính: viết truyện, tạo tiêu đề. Nên dùng key khỏe nhất.</p>
+
+          <label for="api-key-everything" style="margin-top:14px;">🛠️ Key Everything Else (Gợi Ý + Nhật Ký + Trạng Thái + Ma Thuật)</label>
+          <textarea id="api-key-everything" class="form-textarea" rows="3" placeholder="AIza...&#10;Mỗi key một dòng, Enter để xuống dòng"></textarea>
+          <p style="color:var(--text-muted);font-size:0.7rem;margin-top:2px;">Dùng cho tác vụ phụ: gợi ý hành động, nhật ký, trạng thái nhân vật, Ma Thuật.</p>
+
+          <button type="button" id="btn-toggle-api-key-gemini" class="btn-icon-text" style="margin-top:8px;">👁 Hiện</button>
         </div>
 
         <div class="settings-buttons">

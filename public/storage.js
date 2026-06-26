@@ -12,8 +12,11 @@ class GameStorage {
   }
 
   // ─── API Config (session-only, cleared on tab close) ───
-  saveApiConfig(provider, apiKeys) {
+  saveApiConfig(provider, apiKeys, writerKeys) {
     const config = { provider, apiKeys: Array.isArray(apiKeys) ? apiKeys : [apiKeys] };
+    if (writerKeys && Array.isArray(writerKeys)) {
+      config.writerKeys = writerKeys;
+    }
     sessionStorage.setItem(this._sessionKey, JSON.stringify(config));
   }
 
