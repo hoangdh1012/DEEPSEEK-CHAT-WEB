@@ -33,6 +33,7 @@
   const STYLE_TAGS = [
     'Văn Học', 'Light Novel', 'Điện Ảnh', 'Hài Hước', 'Bi Kịch',
     'Hành Động', 'Trữ Tình', 'Kịch Tính', 'Tu Tiên', 'Hiện Đại',
+    'Cổ Trang',
   ];
 
   const GENDER_TAGS = ['Nam', 'Nữ', 'Khác'];
