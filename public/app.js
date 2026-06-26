@@ -74,7 +74,6 @@
   function showScreen(name) {
     document.querySelectorAll('.screen').forEach(s => {
       s.classList.remove('active');
-      s.style.display = '';
     });
 
     const screen = document.getElementById(`screen-${name}`);
@@ -85,6 +84,12 @@
       }
     }
     state.screen = name;
+
+    // Hide global theme toggle on game screen (game has its own)
+    const globalToggle = document.getElementById('btn-theme-toggle');
+    if (globalToggle) {
+      globalToggle.style.display = (name === 'game') ? 'none' : '';
+    }
 
     if (screen && (name === 'new-game' || name === 'api-settings')) {
       setTimeout(() => {
