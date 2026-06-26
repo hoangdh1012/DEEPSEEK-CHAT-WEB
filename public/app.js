@@ -1124,7 +1124,7 @@
         state.gameWorld.wordCount
       );
       // Dynamic maxTokens based on provider: DeepSeek efficient, Gemini needs more
-      const titleTokens = window.novelAI.provider === 'gemini' ? 500 : 100;
+      const titleTokens = window.novelAI.provider === 'gemini' ? 512 : 256;
       const titleResponse = await window.novelAI.sendMessage(
         titlePrompt,
         [{ role: 'user', content: `Hãy tạo một tiêu đề truyện hấp dẫn, độc đáo bằng tiếng Việt cho câu chuyện này. Chỉ trả về tiêu đề, không thêm gì khác. Tiêu đề phải đầy đủ, không được cắt ngang hay thiếu chữ.` }],
