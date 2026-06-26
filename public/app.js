@@ -1425,6 +1425,19 @@ QUY TẮC:
   // ═══════════════════════════════════════════════════════════
 
   function init() {
+    // ── Theme Toggle Button ──
+    document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+      document.body.classList.toggle('theme-warm');
+      const isWarm = document.body.classList.contains('theme-warm');
+      document.getElementById('btn-theme-toggle').textContent = isWarm ? '☀️' : '🌓';
+      localStorage.setItem('dsng_theme', isWarm ? 'warm' : 'dark');
+    });
+    // Restore saved theme
+    if (localStorage.getItem('dsng_theme') === 'warm') {
+      document.body.classList.add('theme-warm');
+      document.getElementById('btn-theme-toggle').textContent = '☀️';
+    }
+
     try {
       injectSearchStyles();
       initMainMenu();
