@@ -1425,17 +1425,22 @@ QUY TẮC:
   // ═══════════════════════════════════════════════════════════
 
   function init() {
-    // ── Theme Toggle Button ──
-    document.getElementById('btn-theme-toggle').addEventListener('click', () => {
+    // ── Theme Toggle Buttons ──
+    function toggleThemeUI() {
       document.body.classList.toggle('theme-warm');
       const isWarm = document.body.classList.contains('theme-warm');
-      document.getElementById('btn-theme-toggle').textContent = isWarm ? '☀️' : '🌓';
+      const icon = isWarm ? '☀️' : '🌓';
       localStorage.setItem('dsng_theme', isWarm ? 'warm' : 'dark');
-    });
+      // Update all theme toggle buttons
+      const btns = document.querySelectorAll('#btn-theme-toggle, #btn-game-theme-toggle');
+      btns.forEach(b => b.textContent = icon);
+    }
+    const btns = document.querySelectorAll('#btn-theme-toggle, #btn-game-theme-toggle');
+    btns.forEach(b => b.addEventListener('click', toggleThemeUI));
     // Restore saved theme
     if (localStorage.getItem('dsng_theme') === 'warm') {
       document.body.classList.add('theme-warm');
-      document.getElementById('btn-theme-toggle').textContent = '☀️';
+      btns.forEach(b => b.textContent = '☀️');
     }
 
     try {
