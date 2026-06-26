@@ -715,7 +715,6 @@
   // ═══════════════════════════════════════════════════════════
 
   function initGameScreen() {
-    document.getElementById('btn-toggle-menu').onclick = toggleMenuPanel;
     document.getElementById('btn-exit-game').onclick = confirmExitGame;
     document.getElementById('btn-save-slot').onclick = () => {
       document.getElementById('save-dialog-overlay').style.display = 'flex';
@@ -752,14 +751,30 @@
       document.getElementById('save-slot-name').value = '';
     };
 
-    // Menu Tabs
+    // Menu Tabs — click to open/close panel for that tab
     document.querySelectorAll('.menu-tab').forEach(tab => {
       tab.onclick = () => {
+        const tabId = tab.dataset.tab;
+        const content = document.getElementById(tabId);
+        const panel = document.getElementById('menu-panel');
+        const wasOpen = panel.classList.contains('open');
+
+        // If same tab is already active and panel is open → close panel
+        if (wasOpen && tab.classList.contains('active')) {
+          panel.classList.remove('open');
+          tab.classList.remove('active');
+          content.classList.remove('active');
+          state.menuOpen = false;
+          return;
+        }
+
+        // Open panel, activate selected tab
+        panel.classList.add('open');
+        state.menuOpen = true;
         document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
         tab.classList.add('active');
-        const tabId = tab.dataset.tab;
         document.querySelectorAll('.menu-tab-content').forEach(c => c.classList.remove('active'));
-        document.getElementById(tabId).classList.add('active');
+        content.classList.add('active');
       };
     });
 
@@ -860,7 +875,10 @@
         return;
       }
       if (state.menuOpen) {
-        toggleMenuPanel();
+        document.getElementById('menu-panel').classList.remove('open');
+        document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.menu-tab-content').forEach(c => c.classList.remove('active'));
+        state.menuOpen = false;
         return;
       }
     }
@@ -941,11 +959,6 @@
   }
 
   // ─── Menu Panel ───
-  function toggleMenuPanel() {
-    state.menuOpen = !state.menuOpen;
-    document.getElementById('menu-panel').classList.toggle('open', state.menuOpen);
-  }
-
   function updateAllMenuPanels() {
     updateCharacterPanel();
     updateNPCsPanel();
