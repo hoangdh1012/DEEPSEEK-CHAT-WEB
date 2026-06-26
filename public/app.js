@@ -555,14 +555,16 @@
       }
     });
 
-    // Config Save/Load (web: localStorage)
+    // Config Save/Load (web: download/upload JSON file)
     document.getElementById('btn-save-world-config').addEventListener('click', async () => {
       const world = collectWorldSettings();
       const character = collectCharacterData();
       const data = { world, character };
       const result = await window.gameStorage.saveWorldConfig(data);
       if (result && result.success) {
-        showToast('Đã lưu Config thế giới vào trình duyệt!', 'success');
+        showToast('✅ Đã tải xuống file world-config.json!', 'success');
+      } else {
+        showToast('❌ Lưu Config thất bại', 'error');
       }
     });
 
@@ -570,7 +572,7 @@
       const data = await window.gameStorage.loadWorldConfig();
       if (data) {
         populateFormFromData({ ...(data.world || {}), character: data.character || {} });
-        showToast('Đã tải Config thế giới!', 'success');
+        showToast('✅ Đã tải Config từ file!', 'success');
       }
     });
 

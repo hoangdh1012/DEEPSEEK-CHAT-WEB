@@ -1,0 +1,49 @@
+HUONG DAN SU DUNG - DEEPSEEK NOVEL GAME
+==========================================
+
+CACH CHOI (3 BUOC):
+
+BUOC 1: Cai dat lan dau tien
+  - Chay file: "INSTALL - Cai Dat Truoc Khi Choi.bat"
+  - Đoi 1-2 phut đe cai thu vien
+  - Chi can lam 1 lan duy nhat
+
+BUOC 2: Khoi dong game
+  - Chay file: "START - DeepSeek Novel Game.bat"
+  - Server tu chay, trinh duyet tu mo http://localhost:3000
+
+BUOC 3: Choi game
+  1. Chon "CAI ĐAT API" -> Nhap API Key (DeepSeek hoac Gemini)
+  2. Chon "VAN MOI" -> Tao the gioi + nhan vat
+  3. Nhap vai, tuong tac voi cau chuyen!
+
+
+YEU CAU HE THONG:
+  - Windows 10/11
+  - Node.js (tai mien phi tu https://nodejs.org)
+  - Trinh duyet: Chrome, Edge, Firefox...
+  - API Key DeepSeek hoac Gemini
+
+
+CAU HOI THUONG GAP:
+
+Q: Toi khong co API Key?
+A: Vao platform.deepseek.com (DeepSeek tra phi)
+   Hoac aistudio.google.com (Gemini 2.5 Flash MIEN PHI)
+   Đang ky -> Tao API Key -> Copy vao app
+
+Q: Server bao loi "port 3000 dang dung"?
+A: Vao file server.js, sua dong "const PORT = 3000" thanh 3001, 8080...
+
+Q: Muon choi tren dien thoai/may khac cung WiFi?
+A: Tim IP may tinh (cmd -> ipconfig)
+   Tu dien thoai mo: http://<IP>:3000
+
+Q: API Key co bi tiet lo khong?
+A: KHONG. API Key chi luu trong trinh duyet cua ban
+   (sessionStorage), bi xoa khi tat trinh duyet.
+   KHONG AI nhin thay key cua ban.
+
+
+PHAN MEM DUOC TAO BOI: GitHub Copilot + DeepSeek API
+PHIEN BAN: 1.0.0

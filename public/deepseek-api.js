@@ -79,22 +79,33 @@ class NovelAI {
     const endpoint = this.provider === 'deepseek' ? '/api/deepseek' : '/api/gemini';
     const serverURL = this._getServerURL();
 
-    const result = await fetch(`${serverURL}${endpoint}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        apiKey: this.apiKey,
-        messages: [{ role: 'user', content: 'Trả lời ngắn gọn: "Kết nối thành công"' }],
-        temperature: 0,
-        maxTokens: 30,
-      }),
-    });
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
-    const data = await result.json();
-    if (data.success) {
-      return { success: true, content: data.content || 'Kết nối thành công' };
+    try {
+      const result = await fetch(`${serverURL}${endpoint}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          apiKey: this.apiKey,
+          messages: [{ role: 'user', content: 'Trả lời ngắn gọn: "Kết nối thành công"' }],
+          temperature: 0,
+          maxTokens: 30,
+        }),
+        signal: controller.signal,
+      });
+
+      clearTimeout(timer);
+      const data = await result.json();
+      if (data.success) {
+        return { success: true, content: data.content || 'Kết nối thành công' };
+      }
+      throw new Error(data.error || 'Kết nối thất bại');
+    } catch (e) {
+      clearTimeout(timer);
+      if (e.name === 'AbortError') throw new Error('Request timed out (25s)');
+      throw e;
     }
-    throw new Error(data.error || 'Kết nối thất bại');
   }
 
   // ─── Build System Prompt ───

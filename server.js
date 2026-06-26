@@ -46,37 +46,49 @@ app.post('/api/deepseek', (req, res) => {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${apiKey}`,
       'Content-Length': Buffer.byteLength(body)
-    },
-    timeout: 120000
+    }
   };
 
-  const proxyReq = https.request(options, (proxyRes) => {
-    let data = '';
-    proxyRes.on('data', (chunk) => { data += chunk; });
-    proxyRes.on('end', () => {
-      try {
-        const json = JSON.parse(data);
-        if (json.choices && json.choices[0] && json.choices[0].message) {
-          res.json({ success: true, content: json.choices[0].message.content });
-        } else {
-          res.json({ success: false, error: json.error?.message || 'Invalid API response' });
-        }
-      } catch (e) {
-        res.json({ success: false, error: `Parse error: ${e.message}` });
-      }
-    });
-  });
+  let responded = false;
+  const safeJson = (obj) => { if (!responded) { responded = true; res.json(obj); } };
 
-  proxyReq.on('error', (e) => {
-    res.json({ success: false, error: `Connection error: ${e.message}` });
-  });
-  proxyReq.on('timeout', () => {
+  // Fallback timeout — 120s for normal calls
+  const timeoutMs = (maxTokens || 4096) <= 50 ? 30000 : 120000;
+  const timer = setTimeout(() => {
     proxyReq.destroy();
-    res.json({ success: false, error: 'Request timed out' });
-  });
+    safeJson({ success: false, error: `Request timed out after ${timeoutMs / 1000}s` });
+  }, timeoutMs);
 
-  proxyReq.write(body);
-  proxyReq.end();
+  try {
+    const proxyReq = https.request(options, (proxyRes) => {
+      let data = '';
+      proxyRes.on('data', (chunk) => { data += chunk; });
+      proxyRes.on('end', () => {
+        clearTimeout(timer);
+        try {
+          const json = JSON.parse(data);
+          if (json.choices && json.choices[0] && json.choices[0].message) {
+            safeJson({ success: true, content: json.choices[0].message.content });
+          } else {
+            safeJson({ success: false, error: json.error?.message || 'Invalid API response' });
+          }
+        } catch (e) {
+          safeJson({ success: false, error: `Parse error: ${e.message}` });
+        }
+      });
+    });
+
+    proxyReq.on('error', (e) => {
+      clearTimeout(timer);
+      safeJson({ success: false, error: `Connection error: ${e.message}` });
+    });
+
+    proxyReq.write(body);
+    proxyReq.end();
+  } catch (e) {
+    clearTimeout(timer);
+    safeJson({ success: false, error: `Internal error: ${e.message}` });
+  }
 });
 
 // ──────────── Gemini API Proxy ────────────
@@ -114,37 +126,49 @@ app.post('/api/gemini', (req, res) => {
     headers: {
       'Content-Type': 'application/json',
       'Content-Length': Buffer.byteLength(body)
-    },
-    timeout: 120000
+    }
   };
 
-  const proxyReq = https.request(options, (proxyRes) => {
-    let data = '';
-    proxyRes.on('data', (chunk) => { data += chunk; });
-    proxyRes.on('end', () => {
-      try {
-        const json = JSON.parse(data);
-        if (json.candidates && json.candidates[0] && json.candidates[0].content) {
-          res.json({ success: true, content: json.candidates[0].content.parts[0].text });
-        } else {
-          res.json({ success: false, error: json.error?.message || 'Invalid Gemini response' });
-        }
-      } catch (e) {
-        res.json({ success: false, error: `Parse error: ${e.message}` });
-      }
-    });
-  });
+  let responded = false;
+  const safeJson = (obj) => { if (!responded) { responded = true; res.json(obj); } };
 
-  proxyReq.on('error', (e) => {
-    res.json({ success: false, error: `Connection error: ${e.message}` });
-  });
-  proxyReq.on('timeout', () => {
+  // Fallback timeout — 120s for normal calls, 30s for test calls
+  const timeoutMs = (maxTokens || 4096) <= 50 ? 30000 : 120000;
+  const timer = setTimeout(() => {
     proxyReq.destroy();
-    res.json({ success: false, error: 'Request timed out' });
-  });
+    safeJson({ success: false, error: `Request timed out after ${timeoutMs / 1000}s` });
+  }, timeoutMs);
 
-  proxyReq.write(body);
-  proxyReq.end();
+  try {
+    const proxyReq = https.request(options, (proxyRes) => {
+      let data = '';
+      proxyRes.on('data', (chunk) => { data += chunk; });
+      proxyRes.on('end', () => {
+        clearTimeout(timer);
+        try {
+          const json = JSON.parse(data);
+          if (json.candidates && json.candidates[0] && json.candidates[0].content) {
+            safeJson({ success: true, content: json.candidates[0].content.parts[0].text });
+          } else {
+            safeJson({ success: false, error: json.error?.message || 'Invalid Gemini response' });
+          }
+        } catch (e) {
+          safeJson({ success: false, error: `Parse error: ${e.message}` });
+        }
+      });
+    });
+
+    proxyReq.on('error', (e) => {
+      clearTimeout(timer);
+      safeJson({ success: false, error: `Connection error: ${e.message}` });
+    });
+
+    proxyReq.write(body);
+    proxyReq.end();
+  } catch (e) {
+    clearTimeout(timer);
+    safeJson({ success: false, error: `Internal error: ${e.message}` });
+  }
 });
 
 // ──────────── Serve index.html for all other routes (SPA) ────────────

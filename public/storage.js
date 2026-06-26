@@ -147,10 +147,21 @@ class GameStorage {
     });
   }
 
-  // ─── World Config (localStorage) ───
+  // ─── World Config (Save = download .json file, Load = open file picker) ───
   async saveWorldConfig(data) {
     try {
-      localStorage.setItem(this._configKey, JSON.stringify(data));
+      const json = JSON.stringify(data, null, 2);
+      const blob = new Blob([json], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'world-config.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      // Also save to localStorage as fallback
+      localStorage.setItem(this._configKey, json);
       return { success: true };
     } catch (e) {
       return { success: false, error: e.message };
@@ -158,12 +169,30 @@ class GameStorage {
   }
 
   async loadWorldConfig() {
-    try {
-      const raw = localStorage.getItem(this._configKey);
-      return raw ? JSON.parse(raw) : null;
-    } catch {
-      return null;
-    }
+    return new Promise((resolve) => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.json';
+      input.onchange = async (e) => {
+        const file = e.target.files[0];
+        if (!file) {
+          resolve(null);
+          return;
+        }
+        try {
+          const text = await file.text();
+          const data = JSON.parse(text);
+          // Also cache to localStorage
+          localStorage.setItem(this._configKey, text);
+          resolve(data);
+        } catch {
+          resolve(null);
+        }
+      };
+      // Handle user canceling the dialog
+      input.oncancel = () => resolve(null);
+      input.click();
+    });
   }
 
   // ─── Export Story as .doc (web: download as .html) ───
