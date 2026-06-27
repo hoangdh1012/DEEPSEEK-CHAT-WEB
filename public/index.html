@@ -325,6 +325,7 @@
     <!-- Topbar -->
     <div class="topbar">
       <div class="topbar-left">
+        <button id="btn-toggle-menu" class="btn-icon" title="Menu">☰</button>
         <div class="menu-tabs" id="menu-tabs">
           <button class="menu-tab" data-tab="tab-character">🧑 Nhân Vật</button>
           <button class="menu-tab" data-tab="tab-npcs">👥 NPC</button>
@@ -453,6 +454,72 @@
       <div class="dialog-buttons">
         <button id="btn-confirm-ok" class="btn-primary btn-gold">OK</button>
         <button id="btn-confirm-cancel" class="btn-secondary">Hủy</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ================================================================ -->
+  <!-- NPC EDITOR MODAL                                                 -->
+  <!-- ================================================================ -->
+  <div id="npc-editor-modal" class="dialog-overlay" style="display:none;">
+    <div class="dialog glass-panel" style="width:90%;max-width:500px;max-height:90vh;overflow-y:auto;">
+      <h3 id="npc-editor-title">Thông Tin Nhân Vật</h3>
+
+      <div class="form-group" id="npc-ai-suggest-row" style="margin-bottom:12px;">
+        <label style="font-size:0.85em;color:var(--text-secondary);display:block;margin-bottom:6px;">Mô Tả Nhanh (để AI gợi ý)</label>
+        <div style="display:flex;gap:8px;">
+          <input type="text" id="npc-ai-prompt" class="form-input"
+                 placeholder="VD: Tổng thống tham vọng muốn chiếm đảo của tôi..." style="flex:1;">
+          <button id="btn-npc-ai-suggest" class="btn-secondary" style="white-space:nowrap;padding:8px 12px;">✨ Gợi Ý AI</button>
+        </div>
+        <div id="npc-ai-loading" style="display:none;font-size:0.85em;color:var(--accent-gold);margin-top:6px;">
+          Đang tạo nhân vật...
+        </div>
+      </div>
+
+      <hr id="npc-ai-suggest-divider" style="border:none;border-top:1px solid var(--border-subtle);margin:8px 0 12px;">
+
+      <div class="form-group" style="margin-bottom:10px;">
+        <label style="font-size:0.85em;color:var(--text-secondary);display:block;margin-bottom:4px;">Tên</label>
+        <input type="text" id="npc-edit-name" class="form-input" placeholder="Tên nhân vật...">
+      </div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label style="font-size:0.85em;color:var(--text-secondary);display:block;margin-bottom:4px;">Giới Tính</label>
+        <input type="text" id="npc-edit-gender" class="form-input" placeholder="Nam / Nữ / Khác...">
+      </div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label style="font-size:0.85em;color:var(--text-secondary);display:block;margin-bottom:4px;">Tính Cách</label>
+        <input type="text" id="npc-edit-personality" class="form-input" placeholder="Mô tả tính cách...">
+      </div>
+      <div class="form-group" style="margin-bottom:10px;">
+        <label style="font-size:0.85em;color:var(--text-secondary);display:block;margin-bottom:4px;">Tiểu Sử</label>
+        <textarea id="npc-edit-backstory" class="form-input" rows="4"
+                  placeholder="Tiểu sử / mô tả..." style="resize:vertical;"></textarea>
+      </div>
+
+      <div class="form-group" style="margin-bottom:10px;">
+        <label style="font-size:0.85em;color:var(--text-secondary);display:block;margin-bottom:4px;">
+          Quan hệ với nhân vật chính &nbsp;<span id="npc-edit-rel-display" style="color:var(--accent-gold);font-weight:600;">0</span>
+        </label>
+        <input type="range" id="npc-edit-rel-value" min="-100" max="100" value="0" step="1"
+               style="width:100%;accent-color:var(--accent-gold);"
+               oninput="document.getElementById('npc-edit-rel-display').textContent=this.value">
+        <input type="text" id="npc-edit-rel-status" class="form-input" style="margin-top:8px;"
+               list="rel-status-list" placeholder="Bình Thường / Bạn Bè / Người Yêu / Kẻ Thù...">
+        <datalist id="rel-status-list">
+          <option value="Kẻ Thù"><option value="Lạnh Nhạt"><option value="Bình Thường">
+          <option value="Bạn Bè"><option value="Thân Thiết"><option value="Người Yêu"><option value="Tri Kỷ">
+        </datalist>
+      </div>
+      <div class="form-group" style="margin-bottom:14px;">
+        <label style="display:flex;align-items:center;gap:8px;font-size:0.85em;color:var(--text-secondary);cursor:pointer;">
+          <input type="checkbox" id="npc-edit-dead"> Đã chết
+        </label>
+      </div>
+
+      <div class="dialog-buttons">
+        <button id="btn-save-npc" class="btn-primary btn-gold">Lưu Nhân Vật</button>
+        <button id="btn-close-npc-editor" class="btn-secondary">Đóng</button>
       </div>
     </div>
   </div>
