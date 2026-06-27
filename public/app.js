@@ -455,6 +455,30 @@
     return Math.min(wordCount.max * 4 + 300, 8000);
   }
 
+  // ─── Gộp NPC mới vào danh sách ───
+  function mergeNewNPCs(newNPCs) {
+    if (!state.gameWorld) return;
+    if (!state.gameWorld.entities) state.gameWorld.entities = [];
+    const existing = state.gameWorld.entities;
+
+    let addedCount = 0;
+    for (const npc of newNPCs) {
+      const npcName = (npc.name || '').toLowerCase().trim();
+      const isDuplicate = existing.some(e =>
+        (e.name || '').toLowerCase().trim() === npcName && e.type === npc.type
+      );
+      if (!isDuplicate) {
+        existing.push(npc);
+        addedCount++;
+        console.log(`[NPC] Đã thêm: ${npc.name}`);
+      }
+    }
+    if (addedCount > 0) {
+      showToast(`✨ Đã thêm ${addedCount} NPC mới vào danh sách!`, 'success');
+      updateNPCsPanel();
+    }
+  }
+
   function validateBeforeStart() {
     const world = collectWorldSettings();
     const character = collectCharacterData();
