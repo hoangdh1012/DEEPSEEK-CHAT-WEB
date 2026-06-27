@@ -13,7 +13,6 @@
     gameCharacter: null,
     storyTitle: '',
     storyHistory: [],
-    storyHTML: [],
     journal: [],
     characterStatuses: [],
     turnCount: 0,
@@ -678,8 +677,8 @@
       const character = collectCharacterData();
       state.gameWorld = world;
       state.gameCharacter = character;
+      ensureRelationships();
       state.storyHistory = [];
-      state.storyHTML = [];
       state.journal = [];
       state.turnCount = 0;
       state.hasUnsavedChanges = false;
@@ -773,21 +772,27 @@
   function restoreGameState(data) {
     state.gameWorld = data.world;
     state.gameCharacter = data.character;
+    ensureRelationships();
     state.storyTitle = data.storyTitle || '';
-    state.storyHistory = data.storyHistory || [];
-    state.storyHTML = data.storyHTML || [];
+    // v2 format: merge archived + recent; v1 fallback
+    state.storyHistory = data._format === 'v2'
+      ? [...(data.archivedHistory || []), ...(data.recentHistory || [])]
+      : (data.storyHistory || []);
     state.journal = data.journal || [];
     state.turnCount = data.turnCount || 0;
     state.hasUnsavedChanges = false;
   }
 
   function getGameState() {
+    const WINDOW = 20;
+    const cut = Math.max(0, state.storyHistory.length - WINDOW);
     return {
+      _format: 'v2',
       world: state.gameWorld,
       character: state.gameCharacter,
       storyTitle: state.storyTitle,
-      storyHistory: state.storyHistory,
-      storyHTML: state.storyHTML,
+      archivedHistory: state.storyHistory.slice(0, cut),
+      recentHistory: state.storyHistory.slice(cut),
       journal: state.journal,
       turnCount: state.turnCount,
       _savedAt: new Date().toISOString(),
@@ -835,31 +840,18 @@
       document.getElementById('save-slot-name').value = '';
     };
 
-    // Menu Tabs — click to open/close panel for that tab
+    // ☰ button toggles the whole menu panel
+    document.getElementById('btn-toggle-menu').onclick = toggleMenuPanel;
+
+    // Menu Tabs — simply activate the selected tab
     document.querySelectorAll('.menu-tab').forEach(tab => {
-      tab.onclick = () => {
-        const tabId = tab.dataset.tab;
-        const content = document.getElementById(tabId);
-        const panel = document.getElementById('menu-panel');
-        const wasOpen = panel.classList.contains('open');
-
-        // If same tab is already active and panel is open → close panel
-        if (wasOpen && tab.classList.contains('active')) {
-          panel.classList.remove('open');
-          tab.classList.remove('active');
-          content.classList.remove('active');
-          state.menuOpen = false;
-          return;
-        }
-
-        // Open panel, activate selected tab
-        panel.classList.add('open');
-        state.menuOpen = true;
+      tab.addEventListener('click', () => {
         document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
         document.querySelectorAll('.menu-tab-content').forEach(c => c.classList.remove('active'));
-        content.classList.add('active');
-      };
+        tab.classList.add('active');
+        const tabId = tab.dataset.tab;
+        document.getElementById(tabId).classList.add('active');
+      });
     });
 
     // Story Export Button (web: download as .doc)
@@ -940,8 +932,39 @@
       document.getElementById('suggestions-panel').style.display = 'block';
     };
 
+    // NPC Editor Modal
+    document.getElementById('btn-save-npc').onclick = saveNPCFromEditor;
+    document.getElementById('btn-close-npc-editor').onclick = () => {
+      document.getElementById('npc-editor-modal').style.display = 'none';
+    };
+    document.getElementById('btn-npc-ai-suggest').onclick = async () => {
+      const description = document.getElementById('npc-ai-prompt').value.trim();
+      if (!description) {
+        showToast('Vui lòng nhập mô tả nhân vật', 'warning');
+        return;
+      }
+      const btn = document.getElementById('btn-npc-ai-suggest');
+      const loading = document.getElementById('npc-ai-loading');
+      btn.disabled = true;
+      loading.style.display = 'block';
+      try {
+        const data = await window.novelAI.generateNPCData(description, state.gameWorld);
+        document.getElementById('npc-edit-name').value = data.name || '';
+        document.getElementById('npc-edit-gender').value = data.gender || '';
+        document.getElementById('npc-edit-personality').value = data.personality || '';
+        document.getElementById('npc-edit-backstory').value = data.backstory || '';
+        showToast('AI đã tạo nhân vật! Bạn có thể chỉnh sửa trước khi lưu.', 'success');
+      } catch (err) {
+        console.error('NPC AI suggest error:', err);
+        showToast('Không thể gợi ý AI: ' + err.message, 'error');
+      } finally {
+        btn.disabled = false;
+        loading.style.display = 'none';
+      }
+    };
+
     updateAllMenuPanels();
-    if (state.storyHTML.length > 0) {
+    if (state.storyHistory.length > 0) {
       renderStoryFromHistory();
     }
   }
@@ -1125,35 +1148,143 @@
 
   function updateNPCsPanel() {
     const entities = state.gameWorld?.entities || [];
-    document.getElementById('npcs-content').innerHTML = entities.length > 0
-      ? entities.map(e => {
-        if (e.type === 'character') {
-          const mainCharName = (state.gameCharacter?.name || '').toLowerCase().trim();
-          const entityName = (e.name || '').toLowerCase().trim();
-          if (mainCharName && entityName && mainCharName === entityName) return '';
-          return `
-            <details class="info-detail">
-              <summary class="info-detail-summary"><span class="entity-type-tag">Nhân Vật</span> ${escapeHTML(e.name)}</summary>
-              <div class="info-detail-body">
-                ${e.gender ? `<div class="info-card"><span class="info-label">Giới Tính</span><span class="info-value">${escapeHTML(e.gender)}</span></div>` : ''}
-                ${e.personality ? `<div class="info-card"><span class="info-label">Tính Cách</span><span class="info-value">${escapeHTML(e.personality)}</span></div>` : ''}
-                ${(e.description || e.backstory) ? `<div class="info-card"><span class="info-label">Tiểu Sử</span><span class="info-value">${escapeHTML(e.description || e.backstory || '')}</span></div>` : ''}
+    const mainCharName = (state.gameCharacter?.name || '').toLowerCase().trim();
+    const addBtn = `<button onclick="openNPCEditor(-1)" class="btn-small btn-gold" style="margin-bottom:10px;width:100%;">+ Thêm NPC Mới</button>`;
+    const seedBtn = (window.novelAI.provider === 'deepseek')
+      ? `<button onclick="seedRelationshipsFromBackstory()" class="btn-small btn-secondary" style="margin-bottom:10px;width:100%;">🪄 Tự động hóa quan hệ từ tiểu sử</button>`
+      : '';
+    const cards = entities.map((e, idx) => {
+      if (e.type === 'character') {
+        const entityName = (e.name || '').toLowerCase().trim();
+        if (mainCharName && entityName && mainCharName === entityName) return '';
+        const isDead = e.alive === false;
+        const rel = e.relationship;
+        let relHtml = '';
+        if (rel) {
+          if (isDead) {
+            relHtml = `<div class="info-card npc-dead-card"><span class="info-label">Trạng Thái</span><span class="info-value npc-dead-label">☠ Đã chết</span></div>`;
+          } else {
+            const val = rel.value ?? 0;
+            const pct = Math.abs(val);
+            const barColor = val >= 0 ? 'var(--success)' : 'var(--danger)';
+            const barSide = val < 0 ? 'right:0;' : 'left:0;';
+            relHtml = `<div class="info-card">
+              <span class="info-label">Quan Hệ</span>
+              <div style="display:flex;align-items:center;gap:8px;margin-top:4px;">
+                <span class="npc-rel-badge">${escapeHTML(rel.status)}</span>
+                <span style="font-size:0.78rem;color:var(--text-secondary);">${val > 0 ? '+' : ''}${val}</span>
               </div>
-            </details>`;
-        } else if (e.type === 'location') {
-          return `
-            <details class="info-detail">
-              <summary class="info-detail-summary"><span class="entity-type-tag">Địa Điểm</span> ${escapeHTML(e.name)}</summary>
-              <div class="info-detail-body">${escapeHTML(e.description || 'Không có mô tả')}</div>
-            </details>`;
+              <div class="npc-affinity-track" style="margin-top:6px;">
+                <div class="npc-affinity-bar" style="width:${pct}%;background:${barColor};${barSide}"></div>
+              </div>
+            </div>`;
+          }
         }
         return `
+          <details class="info-detail${isDead ? ' npc-dead' : ''}">
+            <summary class="info-detail-summary" style="display:flex;align-items:center;justify-content:space-between;">
+              <span><span class="entity-type-tag">Nhân Vật</span> ${escapeHTML(e.name)}${isDead ? ' <span class="npc-dead-icon">☠</span>' : ''}</span>
+              <button onclick="event.stopPropagation();openNPCEditor(${idx})" class="btn-small btn-secondary" style="margin-left:8px;flex-shrink:0;">✏️ Sửa</button>
+            </summary>
+            <div class="info-detail-body">
+              ${e.gender ? `<div class="info-card"><span class="info-label">Giới Tính</span><span class="info-value">${escapeHTML(e.gender)}</span></div>` : ''}
+              ${e.personality ? `<div class="info-card"><span class="info-label">Tính Cách</span><span class="info-value">${escapeHTML(e.personality)}</span></div>` : ''}
+              ${(e.description || e.backstory) ? `<div class="info-card"><span class="info-label">Tiểu Sử</span><span class="info-value">${escapeHTML(e.description || e.backstory || '')}</span></div>` : ''}
+              ${relHtml}
+            </div>
+          </details>`;
+      } else if (e.type === 'location') {
+        return `
           <details class="info-detail">
-            <summary class="info-detail-summary"><span class="entity-type-tag">${escapeHTML(e.type)}</span> ${escapeHTML(e.name)}</summary>
+            <summary class="info-detail-summary"><span class="entity-type-tag">Địa Điểm</span> ${escapeHTML(e.name)}</summary>
             <div class="info-detail-body">${escapeHTML(e.description || 'Không có mô tả')}</div>
           </details>`;
-      }).filter(Boolean).join('')
-      : '<p style="color:var(--text-muted)">Không có thực thể</p>';
+      }
+      return `
+        <details class="info-detail">
+          <summary class="info-detail-summary"><span class="entity-type-tag">${escapeHTML(e.type)}</span> ${escapeHTML(e.name)}</summary>
+          <div class="info-detail-body">${escapeHTML(e.description || 'Không có mô tả')}</div>
+        </details>`;
+    }).filter(Boolean).join('');
+    document.getElementById('npcs-content').innerHTML = addBtn + seedBtn + (cards || '<p style="color:var(--text-muted)">Không có thực thể</p>');
+  }
+
+  // ─── NPC Editor ───
+  let _editingNPCIndex = -1;
+
+  function openNPCEditor(index = -1) {
+    _editingNPCIndex = index;
+    const title = document.getElementById('npc-editor-title');
+    document.getElementById('npc-ai-prompt').value = '';
+    document.getElementById('npc-ai-loading').style.display = 'none';
+    document.getElementById('btn-npc-ai-suggest').disabled = false;
+
+    // AI suggestion is a DeepSeek-only feature; hide it under other providers.
+    const showAI = window.novelAI.provider === 'deepseek';
+    document.getElementById('npc-ai-suggest-row').style.display = showAI ? '' : 'none';
+    document.getElementById('npc-ai-suggest-divider').style.display = showAI ? '' : 'none';
+
+    if (index >= 0) {
+      const e = state.gameWorld.entities[index];
+      title.textContent = 'Chỉnh Sửa Nhân Vật';
+      document.getElementById('npc-edit-name').value = e.name || '';
+      document.getElementById('npc-edit-gender').value = e.gender || '';
+      document.getElementById('npc-edit-personality').value = e.personality || '';
+      document.getElementById('npc-edit-backstory').value = e.description || e.backstory || '';
+      const relVal = e.relationship?.value ?? 0;
+      document.getElementById('npc-edit-rel-value').value = relVal;
+      document.getElementById('npc-edit-rel-display').textContent = relVal;
+      document.getElementById('npc-edit-rel-status').value = e.relationship?.status ?? 'Bình Thường';
+      document.getElementById('npc-edit-dead').checked = e.alive === false;
+    } else {
+      title.textContent = 'Thêm Nhân Vật Mới';
+      document.getElementById('npc-edit-name').value = '';
+      document.getElementById('npc-edit-gender').value = '';
+      document.getElementById('npc-edit-personality').value = '';
+      document.getElementById('npc-edit-backstory').value = '';
+      document.getElementById('npc-edit-rel-value').value = 0;
+      document.getElementById('npc-edit-rel-display').textContent = '0';
+      document.getElementById('npc-edit-rel-status').value = 'Bình Thường';
+      document.getElementById('npc-edit-dead').checked = false;
+    }
+    document.getElementById('npc-editor-modal').style.display = 'flex';
+    document.getElementById('npc-edit-name').focus();
+  }
+
+  window.openNPCEditor = openNPCEditor;
+
+  function saveNPCFromEditor() {
+    const name = document.getElementById('npc-edit-name').value.trim();
+    if (!name) {
+      showToast('Vui lòng nhập tên nhân vật', 'warning');
+      return;
+    }
+    const backstory = document.getElementById('npc-edit-backstory').value.trim();
+    const relValue = Math.max(-100, Math.min(100, parseInt(document.getElementById('npc-edit-rel-value').value, 10) || 0));
+    const relStatusInput = document.getElementById('npc-edit-rel-status').value.trim();
+    const entity = {
+      type: 'character',
+      name,
+      gender: document.getElementById('npc-edit-gender').value.trim(),
+      personality: document.getElementById('npc-edit-personality').value.trim(),
+      backstory,
+      description: backstory,
+      relationship: { value: relValue, status: relStatusInput || deriveRelationshipStatus(relValue) },
+      alive: !document.getElementById('npc-edit-dead').checked,
+    };
+
+    if (!state.gameWorld.entities) state.gameWorld.entities = [];
+
+    if (_editingNPCIndex >= 0) {
+      state.gameWorld.entities[_editingNPCIndex] = entity;
+    } else {
+      state.gameWorld.entities.push(entity);
+    }
+
+    document.getElementById('npc-editor-modal').style.display = 'none';
+    updateNPCsPanel();
+    showToast(_editingNPCIndex >= 0 ? `Đã cập nhật "${escapeHTML(name)}"` : `Đã thêm "${escapeHTML(name)}" vào thế giới`, 'success');
+    state.hasUnsavedChanges = true;
   }
 
   function updateWorldInfoPanel() {
@@ -1227,13 +1358,12 @@
       const storyContent = await window.novelAI.sendMessage(systemPrompt, [{ role: 'user', content: openingPrompt }], maxTokens, 2, 'opening');
 
       state.storyHistory.push({ role: 'assistant', content: storyContent });
-      state.storyHTML.push({ type: 'title', content: state.storyTitle });
-      state.storyHTML.push({ type: 'story', content: storyContent });
       state.turnCount = 1;
       state.hasUnsavedChanges = true;
 
       renderStoryFromHistory();
       addJournalEntry(storyContent);
+      updateNPCRelationships(storyContent);
       updateAllMenuPanels();
     } catch (e) {
       showToast(`Lỗi tạo câu chuyện: ${e.message}`, 'error');
@@ -1258,18 +1388,19 @@
       const systemPrompt = window.novelAI._buildSystemPrompt(
         state.gameWorld, state.gameCharacter,
         DIFFICULTY_LABELS[state.gameWorld.difficulty],
-        state.gameWorld.wordCount
+        state.gameWorld.wordCount,
+        state.journal
       );
       const maxTokens = wordCountToTokens(state.gameWorld.wordCount);
       const storyContent = await window.novelAI.sendMessage(systemPrompt, state.storyHistory.slice(-10), maxTokens, 2, 'story');
 
       state.storyHistory.push({ role: 'assistant', content: storyContent });
-      state.storyHTML.push({ type: 'story', content: storyContent });
       state.turnCount++;
 
       appendStoryText(storyContent, false);
       addJournalEntry(storyContent);
       updateCharacterStatuses(storyContent);
+      updateNPCRelationships(storyContent);
       updateAllMenuPanels();
     } catch (e) {
       showToast(`Lỗi: ${e.message}`, 'error');
@@ -1285,7 +1416,8 @@
       const systemPrompt = window.novelAI._buildSystemPrompt(
         state.gameWorld, state.gameCharacter,
         DIFFICULTY_LABELS[state.gameWorld.difficulty],
-        state.gameWorld.wordCount
+        state.gameWorld.wordCount,
+        state.journal
       );
       const narratePrompt = { role: 'user', content: '(Người chơi chọn tiếp tục theo dõi câu chuyện. Hãy viết tiếp diễn biến tiếp theo một cách tự nhiên và hấp dẫn. Đừng hỏi người chơi phải làm gì.)' };
       
@@ -1293,13 +1425,13 @@
       const storyContent = await window.novelAI.sendMessage(systemPrompt, [...state.storyHistory.slice(-9), narratePrompt], maxTokens, 2, 'story');
 
       state.storyHistory.push({ role: 'assistant', content: storyContent });
-      state.storyHTML.push({ type: 'story', content: storyContent });
       state.turnCount++;
       state.hasUnsavedChanges = true;
 
       appendStoryText(storyContent, false);
       addJournalEntry(storyContent);
       updateCharacterStatuses(storyContent);
+      updateNPCRelationships(storyContent);
       updateAllMenuPanels();
     } catch (e) {
       showToast(`Lỗi: ${e.message}`, 'error');
@@ -1315,7 +1447,8 @@
       const systemPrompt = window.novelAI._buildSystemPrompt(
         state.gameWorld, state.gameCharacter,
         DIFFICULTY_LABELS[state.gameWorld.difficulty],
-        state.gameWorld.wordCount
+        state.gameWorld.wordCount,
+        state.journal
       );
       const lastChunk = state.storyHistory.length > 0
         ? state.storyHistory[state.storyHistory.length - 1].content
@@ -1374,7 +1507,8 @@
       const systemPrompt = window.novelAI._buildSystemPrompt(
         state.gameWorld, state.gameCharacter,
         DIFFICULTY_LABELS[state.gameWorld.difficulty],
-        state.gameWorld.wordCount
+        state.gameWorld.wordCount,
+        state.journal
       );
       const currentStatuses = JSON.stringify(state.characterStatuses || []);
       const currentSkills = JSON.stringify(state.gameCharacter?.skills || []);
@@ -1430,25 +1564,286 @@ QUY TẮC:
     }
   }
 
+  // ─── NPC Relationship Helpers ───
+  function deriveRelationshipStatus(value) {
+    if (value <= -60) return 'Kẻ Thù';
+    if (value <= -20) return 'Lạnh Nhạt';
+    if (value <   20) return 'Bình Thường';
+    if (value <   60) return 'Bạn Bè';
+    return 'Thân Thiết';
+  }
+
+  function ensureRelationships() {
+    const entities = state.gameWorld?.entities || [];
+    const mainName = (state.gameCharacter?.name || '').toLowerCase().trim();
+    for (const e of entities) {
+      if (e.type !== 'character') continue;
+      if (mainName && (e.name || '').toLowerCase().trim() === mainName) continue;
+      if (!e.relationship) e.relationship = { value: 0, status: 'Bình Thường' };
+      if (e.alive === undefined) e.alive = true;
+    }
+  }
+
+  async function updateNPCRelationships(storyChunk) {
+    if (window.novelAI.provider !== 'deepseek') return;
+    try {
+      const entities = state.gameWorld?.entities || [];
+      const mainName = (state.gameCharacter?.name || '').toLowerCase().trim();
+      const tracked = entities.filter(e =>
+        e.type === 'character' &&
+        e.alive !== false &&
+        (e.name || '').toLowerCase().trim() !== mainName
+      );
+      if (tracked.length === 0) return;
+
+      const current = tracked.map(e => ({
+        name: e.name,
+        value: e.relationship?.value ?? 0,
+        status: e.relationship?.status ?? 'Bình Thường',
+      }));
+
+      const prompt = `Dựa vào đoạn truyện vừa viết, hãy cập nhật quan hệ giữa CÁC NPC và nhân vật chính ${state.gameCharacter.name}.
+
+QUAN HỆ HIỆN TẠI (giá trị -100 = thù ghét, +100 = yêu quý): ${JSON.stringify(current)}
+
+Trả về CHỈ JSON hợp lệ:
+{
+  "relationships": [
+    {"name": "Tên NPC", "delta": <số nguyên -30..30>, "status": "(tùy chọn) nhãn đặc biệt như Người Yêu/Tri Kỷ/Kẻ Thù", "dead": false, "reason": "lý do ngắn"}
+  ]
+}
+
+QUY TẮC:
+- CHỈ liệt kê NPC thực sự xuất hiện hoặc bị ảnh hưởng trong đoạn truyện này. Bỏ qua NPC không liên quan.
+- delta là MỨC THAY ĐỔI quan hệ lần này (không phải giá trị tuyệt đối).
+- "status" chỉ điền khi có quan hệ đặc biệt; để trống nếu bình thường.
+- "dead": true CHỈ khi NPC rõ ràng đã chết trong đoạn truyện này.
+- Tất cả bằng tiếng Việt.
+
+ĐOẠN TRUYỆN MỚI: "${storyChunk.slice(-1500)}"`;
+
+      const response = await window.novelAI.sendMessage(
+        'Bạn là trợ lý theo dõi quan hệ nhân vật. Chỉ trả về JSON hợp lệ.',
+        [{ role: 'user', content: prompt }],
+        500
+      );
+
+      try {
+        let cleaned = response.trim();
+        if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+        if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+        if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+        const data = JSON.parse(cleaned.trim());
+        if (Array.isArray(data.relationships)) {
+          for (const r of data.relationships) {
+            const ent = tracked.find(e =>
+              (e.name || '').toLowerCase().trim() === (r.name || '').toLowerCase().trim());
+            if (!ent) continue;
+            if (r.dead === true) { ent.alive = false; continue; }
+            const delta = Number(r.delta) || 0;
+            const newValue = Math.max(-100, Math.min(100, (ent.relationship?.value ?? 0) + delta));
+            ent.relationship = {
+              value: newValue,
+              status: (r.status && String(r.status).trim())
+                ? String(r.status).trim()
+                : deriveRelationshipStatus(newValue),
+            };
+          }
+        }
+      } catch {
+        // keep old data on parse failure
+      }
+      updateNPCsPanel();
+    } catch {
+      // relationship update is optional
+    }
+  }
+
+  async function seedRelationshipsFromBackstory() {
+    if (window.novelAI.provider !== 'deepseek') {
+      showToast('Tính năng này chỉ khả dụng với DeepSeek', 'warning');
+      return;
+    }
+    const entities = state.gameWorld?.entities || [];
+    const mainName = (state.gameCharacter?.name || '').toLowerCase().trim();
+    const tracked = entities.filter(e =>
+      e.type === 'character' &&
+      e.alive !== false &&
+      (e.name || '').toLowerCase().trim() !== mainName
+    );
+    if (tracked.length === 0) { showToast('Không có NPC để khởi tạo', 'info'); return; }
+
+    showLoading(true);
+    try {
+      const profiles = tracked.map(e => ({
+        name: e.name,
+        personality: e.personality || '',
+        backstory: e.description || e.backstory || '',
+      }));
+      const prompt = `Dựa vào tiểu sử và tính cách của từng NPC, hãy suy luận quan hệ KHỞI ĐẦU của họ với nhân vật chính ${state.gameCharacter.name} (tính cách: ${state.gameCharacter.personality || 'không rõ'}; tiểu sử: ${state.gameCharacter.backstory || 'không rõ'}).
+
+DANH SÁCH NPC: ${JSON.stringify(profiles)}
+
+Trả về CHỈ JSON hợp lệ:
+{
+  "relationships": [
+    {"name": "Tên NPC", "value": <số nguyên -100..100>, "status": "(tùy chọn) nhãn đặc biệt"}
+  ]
+}
+
+QUY TẮC:
+- value: -100 = thù ghét tột độ, 0 = trung lập/xa lạ, +100 = yêu quý sâu sắc. Suy luận hợp lý từ tiểu sử (bạn thời thơ ấu → dương cao; kẻ thù truyền kiếp → âm sâu; người lạ → gần 0).
+- "status": chỉ điền khi có quan hệ đặc biệt (Người Yêu/Tri Kỷ/Kẻ Thù...), nếu không để trống.
+- Liệt kê TẤT CẢ NPC trong danh sách.
+- Tất cả bằng tiếng Việt.`;
+
+      const response = await window.novelAI.sendMessage(
+        'Bạn là trợ lý khởi tạo quan hệ nhân vật. Chỉ trả về JSON hợp lệ.',
+        [{ role: 'user', content: prompt }],
+        600
+      );
+
+      let cleaned = response.trim();
+      if (cleaned.startsWith('```json')) cleaned = cleaned.slice(7);
+      if (cleaned.startsWith('```')) cleaned = cleaned.slice(3);
+      if (cleaned.endsWith('```')) cleaned = cleaned.slice(0, -3);
+      const data = JSON.parse(cleaned.trim());
+      if (Array.isArray(data.relationships)) {
+        for (const r of data.relationships) {
+          const ent = tracked.find(e =>
+            (e.name || '').toLowerCase().trim() === (r.name || '').toLowerCase().trim());
+          if (!ent) continue;
+          const value = Math.max(-100, Math.min(100, Number(r.value) || 0));
+          ent.relationship = {
+            value,
+            status: (r.status && String(r.status).trim()) ? String(r.status).trim() : deriveRelationshipStatus(value),
+          };
+        }
+        state.hasUnsavedChanges = true;
+        updateNPCsPanel();
+        showToast('Đã khởi tạo quan hệ từ tiểu sử', 'success');
+      }
+    } catch (e) {
+      showToast(`Khởi tạo quan hệ thất bại: ${e.message}`, 'error');
+    } finally {
+      showLoading(false);
+    }
+  }
+  window.seedRelationshipsFromBackstory = seedRelationshipsFromBackstory;
+
+  function toggleMenuPanel() {
+    state.menuOpen = !state.menuOpen;
+    document.getElementById('menu-panel').classList.toggle('open', state.menuOpen);
+  }
+
+  // ─── Turn Block Helpers ───
+  function buildTurnHeader(turnIdx, isExpanded) {
+    const header = document.createElement('div');
+    header.className = 'turn-header';
+
+    const label = document.createElement('span');
+    label.className = 'turn-label';
+    const summary = state.journal[turnIdx]?.summary || '';
+    const preview = summary ? summary.slice(0, 40) + (summary.length > 40 ? '…' : '') : '';
+    label.textContent = `Lượt ${turnIdx + 1}${preview ? ' — ' + preview : ''}`;
+
+    const btn = document.createElement('button');
+    btn.className = 'btn-toggle-turn';
+    btn.textContent = isExpanded ? '▼ Ẩn' : '▶ Hiện';
+    btn.onclick = () => toggleTurn(header.parentElement);
+
+    header.appendChild(label);
+    header.appendChild(btn);
+    return header;
+  }
+
+  function createTurnBlock(turnIdx, isExpanded) {
+    const block = document.createElement('div');
+    block.className = 'turn-block';
+    block.dataset.turn = turnIdx;
+
+    const header = buildTurnHeader(turnIdx, isExpanded);
+    const body = document.createElement('div');
+    body.className = 'turn-body';
+    if (!isExpanded) body.classList.add('hidden');
+
+    block.appendChild(header);
+    block.appendChild(body);
+    return block;
+  }
+
+  function toggleTurn(block) {
+    const body = block.querySelector('.turn-body');
+    const btn = block.querySelector('.btn-toggle-turn');
+    const isHidden = body.classList.toggle('hidden');
+    btn.textContent = isHidden ? '▶ Hiện' : '▼ Ẩn';
+  }
+
+  function collapsePreviousTurns() {
+    const storyEl = document.getElementById('story-text');
+    const blocks = storyEl.querySelectorAll('.turn-block:not(.turn-in-progress)');
+    blocks.forEach((block, i) => {
+      if (i < blocks.length - 1) {
+        const body = block.querySelector('.turn-body');
+        const btn = block.querySelector('.btn-toggle-turn');
+        if (body && !body.classList.contains('hidden')) {
+          body.classList.add('hidden');
+          if (btn) btn.textContent = '▶ Hiện';
+        }
+      }
+    });
+  }
+
+  function appendStoryParagraphs(text, container) {
+    text.split(/\n\n+/).forEach(p => {
+      if (p.trim()) {
+        const para = document.createElement('p');
+        para.textContent = p.trim();
+        container.appendChild(para);
+      }
+    });
+  }
+
   function appendStoryText(text, isAction) {
     const storyEl = document.getElementById('story-text');
     const placeholder = storyEl.querySelector('.story-placeholder');
     if (placeholder) placeholder.remove();
 
     if (isAction) {
-      const block = document.createElement('span');
-      block.className = 'player-action-block';
-      block.textContent = `⚔️ ${text}`;
+      // Start a new in-progress turn block (header added after AI responds)
+      const block = document.createElement('div');
+      block.className = 'turn-block turn-in-progress';
+      const body = document.createElement('div');
+      body.className = 'turn-body';
+      const span = document.createElement('span');
+      span.className = 'player-action-block';
+      span.textContent = `⚔️ ${text}`;
+      body.appendChild(span);
+      block.appendChild(body);
       storyEl.appendChild(block);
     } else {
-      const paragraphs = text.split(/\n\n+/);
-      paragraphs.forEach(p => {
-        if (p.trim()) {
-          const para = document.createElement('p');
-          para.textContent = p.trim();
-          storyEl.appendChild(para);
+      // AI response — find the in-progress block, else narrate path
+      const inProgress = storyEl.querySelector('.turn-in-progress');
+      if (inProgress) {
+        const body = inProgress.querySelector('.turn-body');
+        appendStoryParagraphs(text, body);
+        const completedCount = storyEl.querySelectorAll('.turn-block:not(.turn-in-progress)').length;
+        const header = buildTurnHeader(completedCount, true);
+        inProgress.insertBefore(header, body);
+        inProgress.classList.remove('turn-in-progress');
+        collapsePreviousTurns();
+      } else {
+        // Narrate: no user action — append to last turn block's body
+        const blocks = storyEl.querySelectorAll('.turn-block');
+        const lastBlock = blocks[blocks.length - 1];
+        if (lastBlock) {
+          const body = lastBlock.querySelector('.turn-body');
+          appendStoryParagraphs(text, body);
+          body.classList.remove('hidden');
+          const btn = lastBlock.querySelector('.btn-toggle-turn');
+          if (btn) btn.textContent = '▼ Ẩn';
         }
-      });
+      }
     }
   }
 
@@ -1463,30 +1858,59 @@ QUY TẮC:
       storyEl.appendChild(titleBlock);
     }
 
-    state.storyHistory.forEach(msg => {
-      if (msg.role === 'user') {
-        const block = document.createElement('span');
-        block.className = 'player-action-block';
-        block.textContent = `⚔️ ${msg.content}`;
-        storyEl.appendChild(block);
+    // Group messages into logical turns:
+    // Turn 0: opening assistant message
+    // Turn N: user message + following assistant message
+    const turns = [];
+    let i = 0;
+    const history = state.storyHistory;
+    if (history[0]?.role === 'assistant') {
+      turns.push([history[0]]);
+      i = 1;
+    }
+    while (i < history.length) {
+      if (history[i]?.role === 'user') {
+        const group = [history[i++]];
+        if (i < history.length && history[i]?.role === 'assistant') group.push(history[i++]);
+        turns.push(group);
+      } else if (history[i]?.role === 'assistant') {
+        if (turns.length > 0) {
+          turns[turns.length - 1].push(history[i++]);
+        } else {
+          turns.push([history[i++]]);
+        }
       } else {
-        const paragraphs = msg.content.split(/\n\n+/);
-        paragraphs.forEach(p => {
-          if (p.trim()) {
-            const para = document.createElement('p');
-            para.textContent = p.trim();
-            storyEl.appendChild(para);
-          }
-        });
+        i++;
       }
+    }
+
+    const lastIdx = turns.length - 1;
+    turns.forEach((group, idx) => {
+      const block = createTurnBlock(idx, idx === lastIdx);
+      const body = block.querySelector('.turn-body');
+      group.forEach(msg => {
+        if (msg.role === 'user') {
+          const span = document.createElement('span');
+          span.className = 'player-action-block';
+          span.textContent = `⚔️ ${msg.content}`;
+          body.appendChild(span);
+        } else {
+          appendStoryParagraphs(msg.content, body);
+        }
+      });
+      storyEl.appendChild(block);
     });
 
-    if (storyEl.children.length === 0) {
+    if (storyEl.querySelectorAll('.turn-block').length === 0) {
       const p = document.createElement('p');
       p.className = 'story-placeholder';
       p.textContent = 'Cuộc phiêu lưu của bạn sẽ hiển thị ở đây...';
       storyEl.appendChild(p);
     }
+
+    // Scroll to the last (expanded) turn
+    const lastBlock = storyEl.querySelector('.turn-block:last-of-type');
+    if (lastBlock) lastBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
   }
 
   async function confirmExitGame() {
