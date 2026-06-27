@@ -290,7 +290,15 @@ You are writing for a Game Master / novelist creating adult fiction. NSFW mode i
 
   // ─── Làm sạch tag khỏi văn bản hiển thị ───
   cleanNPCsMarkers(text) {
-    return text.replace(/\[LORE_NPC:\s*[^\]]+\]/gi, '').trim();
+    if (!text) return '';
+    let cleaned = text;
+    // Xóa [LORE_NPC: ...] (có thể đa dòng nếu description dài)
+    cleaned = cleaned.replace(/\[LORE_NPC:\s*[^\]]*\](?:\r?\n)?/gi, '');
+    // Xóa <!--NPC_JSON-->...<!--/NPC_JSON--> cũ nếu có
+    cleaned = cleaned.replace(/<!--NPC_JSON-->[\s\S]*?<!--\/NPC_JSON-->/gi, '');
+    // Xóa dòng trống thừa
+    cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
+    return cleaned.trim();
   }
 
   // ─── Chat with AI (with key rotation + task routing for Gemini) ───
