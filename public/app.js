@@ -1226,9 +1226,14 @@
       const maxTokens = wordCountToTokens(state.gameWorld.wordCount);
       const storyContent = await window.novelAI.sendMessage(systemPrompt, [{ role: 'user', content: openingPrompt }], maxTokens, 2, 'opening');
 
-      state.storyHistory.push({ role: 'assistant', content: storyContent });
+      // Xóa tag khỏi nội dung hiển thị và thêm NPC mới
+      const cleanedContent = window.novelAI.cleanNPCsMarkers(storyContent);
+      const newNPCs = window.novelAI.extractNPCsFromResponse(storyContent);
+      if (newNPCs.length > 0) mergeNewNPCs(newNPCs);
+
+      state.storyHistory.push({ role: 'assistant', content: cleanedContent });
       state.storyHTML.push({ type: 'title', content: state.storyTitle });
-      state.storyHTML.push({ type: 'story', content: storyContent });
+      state.storyHTML.push({ type: 'story', content: cleanedContent });
       state.turnCount = 1;
       state.hasUnsavedChanges = true;
 
@@ -1263,8 +1268,13 @@
       const maxTokens = wordCountToTokens(state.gameWorld.wordCount);
       const storyContent = await window.novelAI.sendMessage(systemPrompt, state.storyHistory.slice(-10), maxTokens, 2, 'story');
 
-      state.storyHistory.push({ role: 'assistant', content: storyContent });
-      state.storyHTML.push({ type: 'story', content: storyContent });
+      // Xóa tag khỏi nội dung hiển thị và thêm NPC mới
+      const cleanedContent = window.novelAI.cleanNPCsMarkers(storyContent);
+      const newNPCs = window.novelAI.extractNPCsFromResponse(storyContent);
+      if (newNPCs.length > 0) mergeNewNPCs(newNPCs);
+
+      state.storyHistory.push({ role: 'assistant', content: cleanedContent });
+      state.storyHTML.push({ type: 'story', content: cleanedContent });
       state.turnCount++;
 
       appendStoryText(storyContent, false);
@@ -1292,8 +1302,13 @@
       const maxTokens = wordCountToTokens(state.gameWorld.wordCount);
       const storyContent = await window.novelAI.sendMessage(systemPrompt, [...state.storyHistory.slice(-9), narratePrompt], maxTokens, 2, 'story');
 
-      state.storyHistory.push({ role: 'assistant', content: storyContent });
-      state.storyHTML.push({ type: 'story', content: storyContent });
+      // Xóa tag khỏi nội dung hiển thị và thêm NPC mới
+      const cleanedContent = window.novelAI.cleanNPCsMarkers(storyContent);
+      const newNPCs = window.novelAI.extractNPCsFromResponse(storyContent);
+      if (newNPCs.length > 0) mergeNewNPCs(newNPCs);
+
+      state.storyHistory.push({ role: 'assistant', content: cleanedContent });
+      state.storyHTML.push({ type: 'story', content: cleanedContent });
       state.turnCount++;
       state.hasUnsavedChanges = true;
 
