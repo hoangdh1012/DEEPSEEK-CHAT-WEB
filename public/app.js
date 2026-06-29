@@ -840,17 +840,30 @@
       document.getElementById('save-slot-name').value = '';
     };
 
-    // ☰ button toggles the whole menu panel
-    document.getElementById('btn-toggle-menu').onclick = toggleMenuPanel;
-
-    // Menu Tabs — simply activate the selected tab
+    // Menu Tabs — click to open/close panel for that tab
     document.querySelectorAll('.menu-tab').forEach(tab => {
       tab.addEventListener('click', () => {
-        document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
-        document.querySelectorAll('.menu-tab-content').forEach(c => c.classList.remove('active'));
-        tab.classList.add('active');
         const tabId = tab.dataset.tab;
-        document.getElementById(tabId).classList.add('active');
+        const content = document.getElementById(tabId);
+        const panel = document.getElementById('menu-panel');
+        const wasOpen = panel.classList.contains('open');
+
+        // If same tab is already active and panel is open → close panel
+        if (wasOpen && tab.classList.contains('active')) {
+          panel.classList.remove('open');
+          tab.classList.remove('active');
+          content.classList.remove('active');
+          state.menuOpen = false;
+          return;
+        }
+
+        // Open panel, activate selected tab
+        panel.classList.add('open');
+        state.menuOpen = true;
+        document.querySelectorAll('.menu-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        document.querySelectorAll('.menu-tab-content').forEach(c => c.classList.remove('active'));
+        content.classList.add('active');
       });
     });
 
@@ -1357,7 +1370,13 @@
       const maxTokens = wordCountToTokens(state.gameWorld.wordCount);
       const storyContent = await window.novelAI.sendMessage(systemPrompt, [{ role: 'user', content: openingPrompt }], maxTokens, 2, 'opening');
 
-      state.storyHistory.push({ role: 'assistant', content: storyContent });
+      // Làm sạch tag LORE_NPC khỏi nội dung hiển thị
+      const cleanedContent = window.novelAI.cleanNPCsMarkers(storyContent);
+      // Trích xuất NPC mới và thêm vào danh sách
+      const newNPCs = window.novelAI.extractNPCsFromResponse(storyContent);
+      if (newNPCs.length > 0) mergeNewNPCs(newNPCs);
+
+      state.storyHistory.push({ role: 'assistant', content: cleanedContent });
       state.turnCount = 1;
       state.hasUnsavedChanges = true;
 
@@ -1394,10 +1413,15 @@
       const maxTokens = wordCountToTokens(state.gameWorld.wordCount);
       const storyContent = await window.novelAI.sendMessage(systemPrompt, state.storyHistory.slice(-10), maxTokens, 2, 'story');
 
-      state.storyHistory.push({ role: 'assistant', content: storyContent });
+      // Làm sạch tag LORE_NPC và trích xuất NPC mới
+      const cleanedContent = window.novelAI.cleanNPCsMarkers(storyContent);
+      const newNPCs = window.novelAI.extractNPCsFromResponse(storyContent);
+      if (newNPCs.length > 0) mergeNewNPCs(newNPCs);
+
+      state.storyHistory.push({ role: 'assistant', content: cleanedContent });
       state.turnCount++;
 
-      appendStoryText(storyContent, false);
+      appendStoryText(cleanedContent, false);
       addJournalEntry(storyContent);
       updateCharacterStatuses(storyContent);
       updateNPCRelationships(storyContent);
@@ -1419,16 +1443,21 @@
         state.gameWorld.wordCount,
         state.journal
       );
-      const narratePrompt = { role: 'user', content: '(Người chơi chọn tiếp tục theo dõi câu chuyện. Hãy viết tiếp diễn biến tiếp theo một cách tự nhiên và hấp dẫn. Đừng hỏi người chơi phải làm gì.)' };
+      const narratePrompt = { role: 'user', content: '(Người chơi chọn tiếp tục theo dõi câu chuyện. Hãy viết tiếp diễn biến tiếp theo một cách tự nhiên và hấp dẫn như một cuốn tiểu thuyết thực thụ. TUYỆT ĐỐI KHÔNG ĐƯỢC: hỏi người chơi bất kỳ câu hỏi nào, liệt kê lựa chọn, đề xuất hành động, hay phá vỡ bức tường thứ tư. Chỉ viết tiếp câu chuyện một cách thuần túy.)' };
       
       const maxTokens = wordCountToTokens(state.gameWorld.wordCount);
       const storyContent = await window.novelAI.sendMessage(systemPrompt, [...state.storyHistory.slice(-9), narratePrompt], maxTokens, 2, 'story');
 
-      state.storyHistory.push({ role: 'assistant', content: storyContent });
+      // Làm sạch tag LORE_NPC và trích xuất NPC mới
+      const cleanedContent = window.novelAI.cleanNPCsMarkers(storyContent);
+      const newNPCs = window.novelAI.extractNPCsFromResponse(storyContent);
+      if (newNPCs.length > 0) mergeNewNPCs(newNPCs);
+
+      state.storyHistory.push({ role: 'assistant', content: cleanedContent });
       state.turnCount++;
       state.hasUnsavedChanges = true;
 
-      appendStoryText(storyContent, false);
+      appendStoryText(cleanedContent, false);
       addJournalEntry(storyContent);
       updateCharacterStatuses(storyContent);
       updateNPCRelationships(storyContent);
@@ -1908,9 +1937,7 @@ QUY TẮC:
       storyEl.appendChild(p);
     }
 
-    // Scroll to the last (expanded) turn
-    const lastBlock = storyEl.querySelector('.turn-block:last-of-type');
-    if (lastBlock) lastBlock.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    // (Không auto-scroll — người dùng có nút ⬆ ⬇ để tự điều hướng)
   }
 
   async function confirmExitGame() {

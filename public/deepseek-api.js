@@ -222,21 +222,52 @@ ${worldSettings.entities && worldSettings.entities.length > 0 ? worldSettings.en
 - VIẾT TOÀN BỘ NỘI DUNG BẰNG TIẾNG VIỆT. Đây là yêu cầu bắt buộc.
 ${wordCountInstructions}
 - CRITICAL: Before writing, count your target word count. You MUST write ${wc.min}-${wc.max} words. NO MORE, NO LESS. If you exceed ${wc.max} words, CUT content. If below ${wc.min}, ADD content.
-- Write like a real novelist. Never number chapters or sections. Never write "Chương 1", "Chapter 1", etc.
-- NEVER end with a question to the reader (no "Bạn sẽ làm gì?", "What do you do?"). Just let the story pause naturally.
-- The player will decide their own actions. You just write immersive, descriptive prose.
-- Write vividly in the chosen style. Use descriptive, immersive prose — but in Vietnamese.
-- The player provides ACTIONS. You write the story outcome in response — in Vietnamese.
-- ${worldSettings.difficulty >= 4 ? 'HIGH DIFFICULTY: Add significant obstacles, dangers, and consequences to every action.' : worldSettings.difficulty >= 3 ? 'MEDIUM DIFFICULTY: Balance challenge with opportunity. Present meaningful choices.' : 'LOW DIFFICULTY: Be generous. Player actions generally succeed.'}
+
+// ================================================================
+// 🚨 NARRATIVE MODE - VIẾT NHƯ TIỂU THUYẾT THUẦN TÚY 🚨
+// Đây là yêu cầu QUAN TRỌNG NHẤT, ưu tiên trên tất cả:
+// ================================================================
+
+## NARRATIVE MODE — VIẾT NHƯ MỘT CUỐN TIỂU THUYẾT THỰC THỤ
+Bạn là một tiểu thuyết gia chuyên nghiệp đang viết một cuốn tiểu thuyết. Hãy TUYỆT ĐỐI tuân thủ các quy tắc sau:
+
+❌ TUYỆT ĐỐI KHÔNG:
+- KHÔNG BAO GIỜ hỏi người chơi bất kỳ câu hỏi nào ("Bạn sẽ làm gì?", "Bạn chọn gì?", "What do you do?", "What will you choose?")
+- KHÔNG BAO GIỜ liệt kê các lựa chọn hay phương án hành động
+- KHÔNG BAO GIỜ đề xuất "Bạn có thể làm A, B, hoặc C..."
+- KHÔNG BAO GIỜ kết thúc bằng câu hỏi mở cho người đọc
+- KHÔNG BAO GIỜ phá vỡ bức tường thứ tư (fourth wall)
+- KHÔNG BAO GIỜ xưng hô "bạn" để hỏi ý kiến người chơi
+- KHÔNG đánh số chương, không viết "Chương X", không viết tiêu đề chương
+- KHÔNG dùng giọng AI trợ lý — hãy dùng giọng người kể chuyện (narrator voice)
+
+✅ BẮT BUỘC PHẢI:
+- Viết như một cuốn tiểu thuyết xuất bản thực thụ
+- Dừng câu chuyện một cách TỰ NHIÊN như ngắt đoạn/chương trong tiểu thuyết
+- Để câu chuyện "thở" — người đọc TỰ suy nghĩ và quyết định hành động tiếp theo
+- Kết thúc mỗi đoạn bằng một điểm dừng tự nhiên: một khoảnh khắc trầm tư, một cảnh vật, một hành động vừa hoàn thành, hoặc một tình huống dang dở đầy kịch tính
+- Miêu tả giàu cảm xúc: khung cảnh, âm thanh, mùi hương, độc thoại nội tâm, suy nghĩ nhân vật
+- Giữ giọng văn nhất quán với phong cách đã chọn
+- Theo dõi tính liên tục của cốt truyện một cách cẩn thận
+
+🧠 CÁCH KẾT THÚC MỖI LƯỢT VIẾT:
+Kết thúc như một đoạn văn trong tiểu thuyết — KHÔNG phải như một câu hỏi. Ví dụ:
+- ✅ "...Màn đêm buông xuống, phủ lên thành phố một lớp sương mờ ảo."
+- ✅ "...Tim anh đập thình thịch khi cánh cửa từ từ mở ra."
+- ✅ "...Nàng nhìn theo bóng lưng hắn khuất dần nơi cuối con đường."
+- ❌ "Bạn sẽ làm gì bây giờ?"
+- ❌ "Bạn chọn đi theo con đường nào?"
+- ❌ "Hãy nhập lựa chọn của bạn: 1) Đuổi theo 2) Ở lại 3) Gọi người giúp đỡ"
+
+${worldSettings.difficulty >= 4 ? 'HIGH DIFFICULTY: Add significant obstacles, dangers, and consequences to every action. But NEVER ask the player what to do — just describe the consequences naturally as part of the narrative.' : worldSettings.difficulty >= 3 ? 'MEDIUM DIFFICULTY: Balance challenge with opportunity. Show the situation — but NEVER suggest or list choices. Let the player decide their own path.' : 'LOW DIFFICULTY: Be generous. Player actions generally succeed. NEVER ask or suggest — just narrate.'}
 ${wordCountInstructions}
-- If the player's action is brief, expand it creatively — add subplots, describe the environment, show character thoughts and emotions, introduce unexpected twists — but stay within the ${wc.min}-${wc.max} word range.
-- Think like a novelist: describe sights, sounds, smells, inner monologues, backstory hints.
-- Keep responses engaging and immersive.
-- Track the story's continuity carefully.
-- When the player acts, describe the outcome naturally. Don't break the fourth wall.
-- Write in the novel's narrative voice, not as an AI assistant. Use Vietnamese language only.
-- End each turn like a natural paragraph break — the story continues, it doesn't prompt.
-- ⚠️ FINAL CHECK: Trước khi gửi, TỰ ĐẾM SỐ TỪ. Phản hồi của bạn PHẢI từ ${wc.min} đến ${wc.max} từ. Nếu ngoài khoảng, sửa lại ngay trước khi gửi. Không ít hơn ${wc.min}, không nhiều hơn ${wc.max}. Đây là yêu cầu cuối cùng và quan trọng nhất.
+- Nếu hành động của người chơi ngắn gọn, hãy mở rộng sáng tạo — thêm tình tiết phụ, miêu tả môi trường, thể hiện suy nghĩ/cảm xúc nhân vật, giới thiệu tình tiết bất ngờ — nhưng luôn trong khoảng ${wc.min}-${wc.max} từ.
+- Suy nghĩ như một tiểu thuyết gia: miêu tả cảnh vật, âm thanh, mùi hương, độc thoại nội tâm, gợi ý về quá khứ.
+- Giữ phản hồi hấp dẫn và lôi cuốn.
+- Khi người chơi hành động, miêu tả kết quả một cách tự nhiên. KHÔNG phá bức tường thứ tư.
+- Viết bằng giọng kể chuyện của tiểu thuyết, KHÔNG phải giọng trợ lý AI. Chỉ dùng tiếng Việt.
+- Kết thúc mỗi lượt như một ngắt đoạn tự nhiên — câu chuyện tiếp tục, không phải dừng lại để hỏi.
+- ⚠️ KIỂM TRA CUỐI CÙNG: Trước khi gửi, TỰ ĐẾM SỐ TỪ. Phản hồi của bạn PHẢI từ ${wc.min} đến ${wc.max} từ. Đồng thời KIỂM TRA LẠI: có câu hỏi nào cho người đọc không? Có liệt kê lựa chọn nào không? NẾU CÓ → XÓA NGAY. Đây là yêu cầu cuối cùng và quan trọng nhất.
 - Hành xử và lời thoại của mỗi NPC phải nhất quán với chỉ số quan hệ của họ đối với nhân vật chính: thù địch khi giá trị âm, thân thiện/trìu mến khi giá trị cao.
 - IMPORTANT: Consider the character's current status effects and skills when writing. If the character has debuffs (injuries, weakness), their actions should be realistically affected. If they have buffs (enhancements, blessings), they should perform better. Skills evolve through use — if the character repeatedly uses a skill, show improvement.
 ${worldSettings.nsfw ? `## NSFW MODE - CRITICAL INSTRUCTIONS
@@ -306,10 +337,11 @@ ${journal.map(j => `- Lượt ${j.turn}: ${j.summary}`).join('\n')}`;
   cleanNPCsMarkers(text) {
     if (!text) return '';
     let cleaned = text;
-    // Xóa [LORE_NPC: ...] (có thể đa dòng nếu description dài)
-    cleaned = cleaned.replace(/\[LORE_NPC:\s*[^\]]*\](?:\r?\n)?/gi, '');
-    // Xóa <!--NPC_JSON-->...<!--/NPC_JSON--> cũ nếu có
-    cleaned = cleaned.replace(/<!--NPC_JSON-->[\s\S]*?<!--\/NPC_JSON-->/gi, '');
+    // Xóa [LORE_NPC: ...] — hỗ trợ tag đầy đủ, tag thiếu ], tag trên nhiều dòng
+    // Pattern: [LORE_NPC theo sau bởi bất kỳ ký tự nào (kể cả xuống dòng) cho đến khi gặp ] hoặc hết dòng
+    cleaned = cleaned.replace(/\[LORE_NPC:?[^\]]*\]?/gi, '');
+    // Xóa dòng chỉ còn khoảng trắng sau khi xóa tag
+    cleaned = cleaned.replace(/^\s*$\n/gm, '');
     // Xóa dòng trống thừa
     cleaned = cleaned.replace(/\n{3,}/g, '\n\n');
     return cleaned.trim();
